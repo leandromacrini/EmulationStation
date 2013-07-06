@@ -7,6 +7,10 @@
 #include "../Log.h"
 #include "../Settings.h"
 
+
+std::vector<FolderData::SortState> GuiGameList::sortStates;
+
+
 Vector2i GuiGameList::getImagePos()
 {
 	return Vector2i((int)(Renderer::getScreenWidth() * mTheme->getFloat("gameImageOffsetX")), (int)(Renderer::getScreenHeight() * mTheme->getFloat("gameImageOffsetY")));
@@ -25,13 +29,30 @@ GuiGameList::GuiGameList(Window* window) : GuiComponent(window),
 	mList(window, 0, 0, Renderer::getDefaultFont(Renderer::MEDIUM)),
 	mScreenshot(window),
 	mDescription(window), 
-	mTransitionImage(window, 0, 0, "", Renderer::getScreenWidth(), Renderer::getScreenHeight(), true)
+	mDescContainer(window), 
+	mTransitionImage(window, 0, 0, "", Renderer::getScreenWidth(), Renderer::getScreenHeight(), true), 
+    sortStateIndex(Settings::getInstance()->getInt("GameListSortIndex"))
 {
+	//first object initializes the vector
+	if (sortStates.empty()) {
+		sortStates.push_back(FolderData::SortState(FolderData::compareFileName, true, "file name, ascending"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareFileName, false, "file name, descending"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareRating, true, "database rating, ascending"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareRating, false, "database rating, descending"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareUserRating, true, "your rating, ascending"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareUserRating, false, "your rating, descending"));
+        sortStates.push_back(FolderData::SortState(FolderData::compareTimesPlayed, true, "played least often"));
+        sortStates.push_back(FolderData::SortState(FolderData::compareTimesPlayed, false, "played most often"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareLastPlayed, true, "played least recently"));
+		sortStates.push_back(FolderData::SortState(FolderData::compareLastPlayed, false, "played most recently"));
+	}
+
 	mImageAnimation.addChild(&mScreenshot);
+	mDescContainer.addChild(&mDescription);
 
 	//scale delay with screen width (higher width = more text per line)
 	//the scroll speed is automatically scaled by component size
-	mDescription.setAutoScroll((int)(1500 + (Renderer::getScreenWidth() * 0.5)), 0.025f);
+	mDescContainer.setAutoScroll((int)(1500 + (Renderer::getScreenWidth() * 0.5)), 0.025f);
 
 	mTransitionImage.setOffset(Renderer::getScreenWidth(), 0);
 	mTransitionImage.setOrigin(0, 0);
@@ -113,7 +134,7 @@ void GuiGameList::render()
 			Renderer::drawRect((int)(Renderer::getScreenWidth() * mTheme->getFloat("listOffsetX")) - 4, Renderer::getDefaultFont(Renderer::LARGE)->getHeight() + 2, 8, Renderer::getScreenHeight(), 0x0000FFFF);
 		
 		mScreenshot.render();
-		mDescription.render();
+		mDescContainer.render();
 	}
 
 	mList.render();
@@ -189,6 +210,16 @@ bool GuiGameList::input(InputConfig* config, Input input)
 		}
 	}
 
+	//change sort order
+	if(config->isMappedTo("sortordernext", input) && input.value != 0) {
+		setNextSortIndex();
+		//std::cout << "Sort order is " << FolderData::getSortStateName(sortStates.at(sortStateIndex).comparisonFunction, sortStates.at(sortStateIndex).ascending) << std::endl;
+	}
+	else if(config->isMappedTo("sortorderprevious", input) && input.value != 0) {
+		setPreviousSortIndex();
+		//std::cout << "Sort order is " << FolderData::getSortStateName(sortStates.at(sortStateIndex).comparisonFunction, sortStates.at(sortStateIndex).ascending) << std::endl;
+	}
+
 	//open the "start menu"
 	if(config->isMappedTo("menu", input) && input.value != 0)
 	{
@@ -199,7 +230,7 @@ bool GuiGameList::input(InputConfig* config, Input input)
 	//open the fast select menu
 	if(config->isMappedTo("select", input) && input.value != 0)
 	{
-		mWindow->pushGui(new GuiFastSelect(mWindow, this, &mList, mList.getSelectedObject()->getName()[0], mTheme->getBoxData(), mTheme->getColor("fastSelect"), mTheme->getSound("menuScroll"), mTheme->getFastSelectFont()));
+        mWindow->pushGui(new GuiFastSelect(mWindow, this, &mList, mList.getSelectedObject()->getName()[0], mTheme));
 		return true;
 	}
 
@@ -216,6 +247,52 @@ bool GuiGameList::input(InputConfig* config, Input input)
 	}
 
 	return false;
+}
+
+const FolderData::SortState & GuiGameList::getSortState() const
+{
+    return sortStates.at(sortStateIndex);
+}
+
+void GuiGameList::setSortIndex(size_t index)
+{
+	//make the index valid
+	if (index >= sortStates.size()) {
+		index = 0;
+	}
+	if (index != sortStateIndex) {
+		//get sort state from vector and sort list
+		sortStateIndex = index;
+		sort(sortStates.at(sortStateIndex).comparisonFunction, sortStates.at(sortStateIndex).ascending);
+	}
+    //save new index to settings
+    Settings::getInstance()->setInt("GameListSortIndex", sortStateIndex);
+}
+
+void GuiGameList::setNextSortIndex()
+{
+	//make the index wrap around
+	if ((sortStateIndex - 1) >= sortStates.size()) {
+		setSortIndex(0);
+	}
+	setSortIndex(sortStateIndex + 1);
+}
+
+void GuiGameList::setPreviousSortIndex()
+{
+	//make the index wrap around
+	if (((int)sortStateIndex - 1) < 0) {
+		setSortIndex(sortStates.size() - 1);
+	}
+	setSortIndex(sortStateIndex - 1);
+}
+
+void GuiGameList::sort(FolderData::ComparisonFunction & comparisonFunction, bool ascending)
+{
+	//resort list and update it
+	mFolder->sort(comparisonFunction, ascending);
+	updateList();
+	updateDetailData();
 }
 
 void GuiGameList::updateList()
@@ -306,8 +383,13 @@ void GuiGameList::updateDetailData()
 			mImageAnimation.fadeIn(35);
 			mImageAnimation.move(imgOffset.x, imgOffset.y, 20);
 
-			mDescription.setOffset(Vector2i((int)(Renderer::getScreenWidth() * 0.03), getImagePos().y + mScreenshot.getSize().y + 12));
-			mDescription.setExtent(Vector2u((int)(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03)), Renderer::getScreenHeight() - mDescription.getOffset().y));
+			mDescContainer.setOffset(Vector2i((int)(Renderer::getScreenWidth() * 0.03), getImagePos().y + mScreenshot.getSize().y + 12));
+			mDescContainer.setSize(Vector2u((int)(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03)), Renderer::getScreenHeight() - mDescContainer.getOffset().y));
+			mDescContainer.setScrollPos(Vector2d(0, 0));
+			mDescContainer.resetAutoScrollTimer();
+
+			mDescription.setOffset(0, 0);
+			mDescription.setExtent(Vector2u((int)(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03)), 0));
 			mDescription.setText(((GameData*)mList.getSelectedObject())->getDescription());
 		}else{
 			mScreenshot.setImage("");
@@ -358,7 +440,7 @@ void GuiGameList::update(int deltaTime)
 
 	mList.update(deltaTime);
 
-	mDescription.update(deltaTime);
+	mDescContainer.update(deltaTime);
 }
 
 void GuiGameList::doTransition(int dir)

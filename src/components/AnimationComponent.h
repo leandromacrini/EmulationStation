@@ -2,7 +2,6 @@
 #define _ANIMATIONCOMPONENT_H_
 
 #include "../GuiComponent.h"
-#include "ImageComponent.h"
 #include <vector>
 
 #define ANIMATION_TICK_SPEED 16

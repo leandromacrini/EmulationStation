@@ -52,6 +52,10 @@ SystemData::SystemData(std::string name, std::string descName, std::string start
 
 SystemData::~SystemData()
 {
+	//save changed game data back to xml
+	if(!Settings::getInstance()->getBool("IGNOREGAMELIST")) {
+		updateGamelist(this);
+	}
 	delete mRootFolder;
 }
 
@@ -92,6 +96,10 @@ void SystemData::launchGame(Window* window, GameData* game)
 	window->init();
 	VolumeControl::getInstance()->init();
 	AudioManager::getInstance()->init();
+
+	//update number of times the game has been launched and the time
+	game->setTimesPlayed(game->getTimesPlayed() + 1);
+	game->setLastPlayed(std::time(nullptr));
 }
 
 void SystemData::populateFolder(FolderData* folder)
@@ -139,7 +147,7 @@ void SystemData::populateFolder(FolderData* folder)
 			//if it matches, add it
 			if(chkExt == extension)
 			{
-				GameData* newGame = new GameData(this, filePath.string(), filePath.stem().string());
+				GameData* newGame = new GameData(this, filePath.generic_string(), filePath.stem().string());
 				folder->pushFileData(newGame);
 				isGame = true;
 				break;
@@ -153,7 +161,7 @@ void SystemData::populateFolder(FolderData* folder)
 		//add directories that also do not match an extension as folders
 		if(!isGame && fs::is_directory(filePath))
 		{
-			FolderData* newFolder = new FolderData(this, filePath.string(), filePath.stem().string());
+			FolderData* newFolder = new FolderData(this, filePath.generic_string(), filePath.stem().string());
 			populateFolder(newFolder);
 
 			//ignore folders that do not contain games
@@ -232,7 +240,11 @@ void SystemData::loadConfig()
 						sysPath = varValue.substr(0, varValue.length() - 1);
 					else
 						sysPath = varValue;
-				}else if(varName == "EXTENSION")
+					//convert path to generic directory seperators
+					boost::filesystem::path genericPath(sysPath);
+					sysPath = genericPath.generic_string();
+				}
+				else if(varName == "EXTENSION")
 					sysExtension = varValue;
 				else if(varName == "COMMAND")
 					sysCommand = varValue;
