@@ -24,7 +24,7 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 	ImageComponent* back = new ImageComponent(window);
 	back->setTiling(true);
 	back->setOrigin(0, 0);
-	back->setImage("c:\\retromania\\consoles\\bg_pattern.png");
+	back->setImage("c:\\retromania\\consoles\\bg_pattern.jpg");
 	this->addChild(back);
 
 	for(unsigned int i = 0; i < SystemData::sSystemVector.size(); i++)
@@ -38,9 +38,9 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 		ImageComponent* img = NULL;
 		
 		if( image.compare("none") != 0 )
-			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2, image, 0, Renderer::getScreenHeight()/2.5, true);
+			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2, image, 0, (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 		else
-			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2,  SystemData::getBlankConsoleImagePath(), 0, Renderer::getScreenHeight()/2.5, true);
+			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2,  SystemData::getBlankConsoleImagePath(), 0,  (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 
 		AnimationComponent* label = new AnimationComponent();
 		TextComponent* text = new TextComponent(window);
@@ -122,12 +122,13 @@ bool GuiConsoleList::goToNext()
 		if(mAnimator->isAnimating()) return false;
 
 		mCurrentIndex++;
-		mAnimator->move(-(Renderer::getScreenWidth() / 2), 0, 50);
+		mAnimator->move(-(Renderer::getScreenWidth() / 2), 0, 100);
 
 		if(mCurrentIndex-1 >= 0)
-			mConsoleVector.at(mCurrentIndex-1).label->move(0,  Renderer::getScreenHeight()/4, 1000);
+			mConsoleVector.at(mCurrentIndex-1).label->move(0,  Renderer::getScreenHeight()/4, 0);
 
-		mConsoleVector.at(mCurrentIndex).label->move(0, - (Renderer::getScreenHeight()/4), 25);
+		mConsoleVector.at(mCurrentIndex).label->fadeIn(500);
+		mConsoleVector.at(mCurrentIndex).label->move(0, -(Renderer::getScreenHeight()/4), 500);
 
 		return true;
 	}
@@ -137,19 +138,19 @@ bool GuiConsoleList::goToNext()
 
 bool GuiConsoleList::goToPrev()
 {
-	if(mCurrentIndex-1 >= 0)
+	if(mCurrentIndex > 0)
 	{
 		//avoid animation corruption
 		if(mAnimator->isAnimating()) return false;
 
 		mCurrentIndex--;
-		mAnimator->move(Renderer::getScreenWidth() / 2, 0, 50);
+		mAnimator->move(Renderer::getScreenWidth() / 2, 0, 100);
 
 		if(mCurrentIndex+1 < mConsoleVector.size())
-			mConsoleVector.at(mCurrentIndex+1).label->move(0,  (Renderer::getScreenHeight()/4), 1000);
+			mConsoleVector.at(mCurrentIndex+1).label->move(0,  (Renderer::getScreenHeight()/4), 0);
 
-		SDL_Delay(1000);
-		mConsoleVector.at(mCurrentIndex).label->move(0, - (Renderer::getScreenHeight()/4), 25);
+		mConsoleVector.at(mCurrentIndex).label->fadeIn(500);
+		mConsoleVector.at(mCurrentIndex).label->move(0, - (Renderer::getScreenHeight()/4), 500);
 
 		return true;
 	}
@@ -157,7 +158,7 @@ bool GuiConsoleList::goToPrev()
 	return false;
 }
 
-bool GuiConsoleList::setCurrentIndex(int index)
+bool GuiConsoleList::setCurrentIndex(unsigned int index)
 {
 	if(mCurrentIndex != index && index >= 0 && index < mConsoleVector.size())
 	{

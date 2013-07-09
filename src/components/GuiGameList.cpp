@@ -381,7 +381,7 @@ void GuiGameList::updateDetailData()
 			mScreenshot.setOffset(getImagePos() - imgOffset);
 
 			mImageAnimation.fadeIn(35);
-			mImageAnimation.move(imgOffset.x, imgOffset.y, 20);
+			mImageAnimation.move(imgOffset.x, imgOffset.y, 300);
 
 			mDescContainer.setOffset(Vector2i((int)(Renderer::getScreenWidth() * 0.03), getImagePos().y + mScreenshot.getSize().y + 12));
 			mDescContainer.setSize(Vector2u((int)(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03)), Renderer::getScreenHeight() - mDescContainer.getOffset().y));
@@ -448,7 +448,7 @@ void GuiGameList::doTransition(int dir)
 	mTransitionImage.copyScreen();
 	mTransitionImage.setOpacity(255);
 	mTransitionImage.setOffset(0, 0);
-	mTransitionAnimation.move(Renderer::getScreenWidth() * dir, 0, 50);
+	mTransitionAnimation.move(Renderer::getScreenWidth() * dir, 0, 500);
 }
 
 void GuiGameList::doVerticalTransition(int dir)
@@ -456,5 +456,5 @@ void GuiGameList::doVerticalTransition(int dir)
 	mTransitionImage.copyScreen();
 	mTransitionImage.setOpacity(255);
 	mTransitionImage.setOffset(0, 0);
-	mTransitionAnimation.move(0, Renderer::getScreenHeight() * dir, 50);
+	mTransitionAnimation.move(0, Renderer::getScreenHeight() * dir, 500);
 }

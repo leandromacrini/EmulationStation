@@ -34,7 +34,7 @@ public:
 	*/
 	bool input(InputConfig* config, Input input);
 	void update(int deltaTime);
-	bool setCurrentIndex(int index);
+	bool setCurrentIndex(unsigned int index);
 	bool goToNext();
 	bool goToPrev();
 
@@ -42,7 +42,7 @@ public:
 
 protected:
 	std::vector<ConsoleItem> mConsoleVector;
-	int mCurrentIndex;
+	unsigned int mCurrentIndex;
 	GuiGameList* mGameList;
 	AnimationComponent* mAnimator;
 };

@@ -12,8 +12,9 @@ AnimationComponent::AnimationComponent()
 
 void AnimationComponent::move(int x, int y, int speed)
 {
-	mMoveX = x;
-	mMoveY = y;
+	//adding the new value to mMove* permit to chain animation and start from where was the not completed animation
+	mMoveX += x;
+	mMoveY += y;
 	mMoveSpeed = speed;
 }
 
@@ -36,43 +37,65 @@ void AnimationComponent::fadeOut(int time)
 //this should really be fixed at the system loop level...
 void AnimationComponent::update(int deltaTime)
 {
-	mAccumulator += deltaTime;
-	while(mAccumulator >= ANIMATION_TICK_SPEED)
+	if(mMoveX != 0 || mMoveY != 0)
 	{
-		mAccumulator -= ANIMATION_TICK_SPEED;
+		//avoid division by zero and make a instant animation
+		if(mMoveSpeed == 0) mMoveSpeed = 1;
 
-		if(mMoveX != 0 || mMoveY != 0)
+		int deltaX = mMoveX * deltaTime / mMoveSpeed;
+		int deltaY = mMoveY * deltaTime / mMoveSpeed;
+
+		//if is last time we enter complete animation and erase data
+		if( abs(deltaX) > abs(mMoveX) || abs(deltaY) > abs(mMoveY) )
 		{
-			Vector2i offset(mMoveX, mMoveY);
-			if(abs(offset.x) > mMoveSpeed)
-				offset.x = mMoveSpeed * (offset.x > 0 ? 1 : -1);
-			if(abs(offset.y) > mMoveSpeed)
-				offset.y = mMoveSpeed * (offset.y > 0 ? 1 : -1);
+			deltaX = mMoveX;
+			deltaY = mMoveY;
 
-			moveChildren(offset.x, offset.y);
+			reset();
 
-			mMoveX -= offset.x;
-			mMoveY -= offset.y;
+		}
+		else
+		{	
+			mMoveX -= deltaX;
+			mMoveY -= deltaY;
+
+			mMoveSpeed -= deltaTime;
 		}
 
-		if(mFadeRate != 0)
+		moveChildren(deltaX, deltaY);
+	}
+
+	if(mFadeRate != 0)
+	{
+		int deltaOpacity = 0;
+		
+		if(mFadeRate < 0)
 		{
-			int opacity = (int)mOpacity + mFadeRate;
-			if(opacity > 255)
-			{
-				mFadeRate = 0;
-				opacity = 255;
-			}
-
-			if(opacity < 0)
-			{
-				mFadeRate = 0;
-				opacity = 0;
-			}
-
-			mOpacity = (unsigned char)opacity;
-			setChildrenOpacity((unsigned char)opacity);
+			deltaOpacity = mOpacity * deltaTime / mFadeRate;
+			mFadeRate += deltaTime;
 		}
+		else
+		{
+			deltaOpacity = (255 - mOpacity) * deltaTime / mFadeRate;
+			mFadeRate -= deltaTime;
+		}
+
+		int opacity = (int)mOpacity + deltaOpacity;
+
+		if(opacity > 255)
+		{
+			mFadeRate = 0;
+			opacity = 255;
+		}
+
+		if(opacity < 0)
+		{
+			mFadeRate = 0;
+			opacity = 0;
+		}
+
+		mOpacity = (unsigned char)opacity;
+		setChildrenOpacity((unsigned char)opacity);
 	}
 }
 
@@ -81,6 +104,15 @@ bool AnimationComponent::isAnimating()
 	if(mMoveX != 0 || mMoveY != 0 || mFadeRate != 0) return true;
 
 	return false;
+}
+
+void AnimationComponent::reset()
+{
+	mMoveX = 0;
+	mMoveY = 0;
+	mMoveSpeed = 0;
+
+	mFadeRate = 0;
 }
 
 void AnimationComponent::addChild(GuiComponent* gui)

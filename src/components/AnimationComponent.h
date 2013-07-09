@@ -16,6 +16,7 @@ public:
 	void fadeOut(int time);
 
 	void update(int deltaTime);
+	void reset();
 
 	bool isAnimating();
 
