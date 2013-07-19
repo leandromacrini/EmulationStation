@@ -21,6 +21,7 @@
 	#include <bcm_host.h>
 #endif
 
+
 #include <sstream>
 
 namespace fs = boost::filesystem;
@@ -215,7 +216,7 @@ int main(int argc, char* argv[])
 				nrOfFrames = 0;
 				timeElapsed = 0;
 			}
-			Renderer::drawText(fpsString, 50, 50, 0x00FF00FF, Renderer::getDefaultFont(Renderer::MEDIUM));
+			Font::get(*window.getResourceManager(), Font::getDefaultPath(), FONT_SIZE_MEDIUM)->drawText(fpsString, 50, 50, 0x00FF00FF);
 		}
 
 		//sleep if we're past our threshold

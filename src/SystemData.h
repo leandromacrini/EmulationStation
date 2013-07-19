@@ -11,7 +11,7 @@ class GameData;
 class SystemData
 {
 public:
-	SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image);
+	SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image, std::string logo, std::string relaseDate, std::string manufacturer, std::string platformId);
 	~SystemData();
 
 	FolderData* getRootFolder();
@@ -21,6 +21,10 @@ public:
 	std::string getStartPath();
 	std::string getExtension();
 	std::string getGamelistPath();
+	std::string getLogo();
+	std::string getRelaseDate();
+	std::string getManufacturer();
+	std::string getPlatformId();
 	
 	bool hasGamelist();
 
@@ -40,6 +44,10 @@ private:
 	std::string mSearchExtension;
 	std::string mLaunchCommand;
 	std::string mImage;
+	std::string mRelaseDate;
+	std::string mManufacturer;
+	std::string mPlatformId;
+	std::string mLogo;
 
 	void populateFolder(FolderData* folder);
 

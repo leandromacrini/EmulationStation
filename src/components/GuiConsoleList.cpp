@@ -12,20 +12,25 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 	mCurrentIndex = -1;
 	mGameList = gameList;
 
-	mAnimator = new AnimationComponent();
-	mAnimator->addChild(this);
-
 	if(SystemData::sSystemVector.size() == 0)
 	{
 		LOG(LogError) << "Error - no systems found!";
 		return;
 	}
 
+	//background
 	ImageComponent* back = new ImageComponent(window);
 	back->setTiling(true);
 	back->setOrigin(0, 0);
-	back->setImage("c:\\retromania\\consoles\\bg_pattern.jpg");
+	back->setImage("c:\\retromania\\consoles\\bg_pattern.png");
+	back->setResize(Renderer::getScreenWidth(), Renderer::getScreenHeight(), false);
 	this->addChild(back);
+
+	//consoles slider
+	slider = new GuiComponent(window);
+	this->addChild(slider);
+	sliderAnimator = new AnimationComponent();
+	sliderAnimator->addChild(slider);
 
 	for(unsigned int i = 0; i < SystemData::sSystemVector.size(); i++)
 	{
@@ -42,26 +47,48 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 		else
 			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2,  SystemData::getBlankConsoleImagePath(), 0,  (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 
-		AnimationComponent* label = new AnimationComponent();
-		TextComponent* text = new TextComponent(window);
-		text->setText(name);
-		text->setFont(Renderer::getDefaultFont(Renderer::LARGE));
-		text->setOpacity(255);
-		text->setColor(0xFFFFFFFF);
-		text->setOffset(Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i - text->getSize().x/2, Renderer::getScreenHeight());
-		label->addChild(text);
-
-		ConsoleItem newConsole = {name, img, label, text};
-		mConsoleVector.push_back(newConsole);
-		
-		this->addChild(newConsole.image);
-		//add text label after console image
-		this->addChild( text );
+		slider->addChild( img );
 	}
 
-	this->mSize = Vector2u( Renderer::getScreenWidth()/2 * (mConsoleVector.size()+1) , Renderer::getScreenHeight());
-	back->setResize(mSize.x, mSize.y, true);
+	//update slider total size
+	slider->setSize(Renderer::getScreenWidth()/2 * (SystemData::sSystemVector.size()+1) , Renderer::getScreenHeight());
 
+	//create loto e logoAnimator
+	logo = new ImageComponent(window);
+	logo->setTiling(false);
+	logo->setOrigin(0.5, 0);
+	this->addChild(logo);
+
+	logoAnimator = new AnimationComponent();
+	logoAnimator->addChild(logo);
+
+	//create description text
+	text = new GuiComponent(window);
+	this->addChild(text);
+
+	textAnimator = new AnimationComponent();
+	textAnimator->addChild(text);
+
+	tName = new TextComponent(window);
+	tName->setColor(0xFFFFFFFF);
+	tName->setOffset(10, 10);
+	tName->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
+
+	tManufacturer = new TextComponent(window);
+	tManufacturer->setColor(0xFFFFFFFF);
+	tManufacturer->setOffset(10, 60);
+	tManufacturer->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
+
+	tDate = new TextComponent(window);
+	tDate->setColor(0xFFFFFFFF);
+	tDate->setOffset(10, 110);
+	tDate->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
+
+	text->addChild(tName);
+	text->addChild(tManufacturer);
+	text->addChild(tDate);
+
+	//start at index = 0
 	setCurrentIndex(0);
 }
 
@@ -69,17 +96,11 @@ void GuiConsoleList::update(int deltaTime)
 {
 	GuiComponent::update(deltaTime);
 
-	for(unsigned int i = 0; i < mConsoleVector.size(); i++)
-	{
-		mConsoleVector.at(i).label->update(deltaTime);
-	}
+	sliderAnimator->update(deltaTime);
 
-	mAnimator->update(deltaTime);
-}
+	textAnimator->update(deltaTime);
 
-std::vector<ConsoleItem>* GuiConsoleList::getConsoles()
-{
-	return &mConsoleVector;
+	logoAnimator->update(deltaTime);
 }
 
 bool GuiConsoleList::input(InputConfig* config, Input input)
@@ -116,19 +137,22 @@ bool GuiConsoleList::input(InputConfig* config, Input input)
 
 bool GuiConsoleList::goToNext()
 {
-	if(mCurrentIndex+1 < mConsoleVector.size())
+	//avoid animation corruption
+	if(sliderAnimator->isAnimating()) return false;
+
+	if(mCurrentIndex+1 < SystemData::sSystemVector.size())
 	{
-		//avoid animation corruption
-		if(mAnimator->isAnimating()) return false;
 
 		mCurrentIndex++;
-		mAnimator->move(-(Renderer::getScreenWidth() / 2), 0, 100);
 
-		if(mCurrentIndex-1 >= 0)
-			mConsoleVector.at(mCurrentIndex-1).label->move(0,  Renderer::getScreenHeight()/4, 0);
+		//animate slider
+		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS);
 
-		mConsoleVector.at(mCurrentIndex).label->fadeIn(500);
-		mConsoleVector.at(mCurrentIndex).label->move(0, -(Renderer::getScreenHeight()/4), 500);
+		//animate logo
+		setLogo(true);
+
+		//animate text
+		setText(true);
 
 		return true;
 	}
@@ -138,19 +162,21 @@ bool GuiConsoleList::goToNext()
 
 bool GuiConsoleList::goToPrev()
 {
+	//avoid animation corruption
+	if(sliderAnimator->isAnimating()) return false;
+
 	if(mCurrentIndex > 0)
 	{
-		//avoid animation corruption
-		if(mAnimator->isAnimating()) return false;
-
 		mCurrentIndex--;
-		mAnimator->move(Renderer::getScreenWidth() / 2, 0, 100);
 
-		if(mCurrentIndex+1 < mConsoleVector.size())
-			mConsoleVector.at(mCurrentIndex+1).label->move(0,  (Renderer::getScreenHeight()/4), 0);
+		//animate slider
+		sliderAnimator->move(+(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS);
 
-		mConsoleVector.at(mCurrentIndex).label->fadeIn(500);
-		mConsoleVector.at(mCurrentIndex).label->move(0, - (Renderer::getScreenHeight()/4), 500);
+		//animate logo
+		setLogo(true);
+		
+		//animate text
+		setText(true);
 
 		return true;
 	}
@@ -160,20 +186,56 @@ bool GuiConsoleList::goToPrev()
 
 bool GuiConsoleList::setCurrentIndex(unsigned int index)
 {
-	if(mCurrentIndex != index && index >= 0 && index < mConsoleVector.size())
+	if(mCurrentIndex != index && index >= 0 && index < SystemData::sSystemVector.size())
 	{
 		mCurrentIndex = index;
-		this->setOffset(-(Renderer::getScreenWidth() / 2 * index), this->getOffset().y);
+		slider->setOffset(-(Renderer::getScreenWidth() / 2 * index), this->getOffset().y);
 		
+		setLogo(false);
 
-		for(unsigned int i = 0; i < mConsoleVector.size(); i++)
-		{
-			mConsoleVector.at(i).text->setOffset(Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i - mConsoleVector.at(i).text->getSize().x/2, Renderer::getScreenHeight());
-		}
-		mConsoleVector.at(index).label->move(0, - (Renderer::getScreenHeight()/4), 25);
+		setText(false);
 
 		return true;
 	}
 
 	return false;
+}
+
+void GuiConsoleList::setText(bool animate)
+{
+	//update text
+	textAnimator->reset();
+	tName->setText( "Name: " + SystemData::sSystemVector.at(mCurrentIndex)->getDescName());
+	tManufacturer->setText( "Manufacturer: " + SystemData::sSystemVector.at(mCurrentIndex)->getManufacturer());
+	tDate->setText( "Release date: " + SystemData::sSystemVector.at(mCurrentIndex)->getRelaseDate());
+
+	int maxW = SDL_max( SDL_max(tName->getSize().x, tManufacturer->getSize().x), tDate->getSize().x);
+
+	text->setSize(maxW, 200);
+
+	if(animate)
+	{
+		text->setOffset(- text->getSize().x, 0);
+		textAnimator->move(text->getSize().x, 0, ANIMATION_MILLIS);
+	} else {
+		text->setOffset(0,0);
+	}
+}
+
+void GuiConsoleList::setLogo(bool animate)
+{
+	//update, reset and animate logo
+	logoAnimator->reset();
+
+	logo->setImage(SystemData::sSystemVector.at(mCurrentIndex)->getLogo()); //TODO DYNAMIC
+	logo->setResize(Renderer::getScreenWidth() /2, 0, true);
+	
+
+	if(animate)
+	{
+		logo->setOffset(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight());
+		logoAnimator->move(0, -(Renderer::getScreenHeight()/4), ANIMATION_MILLIS);
+	} else {
+		logo->setOffset(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
+	}
 }

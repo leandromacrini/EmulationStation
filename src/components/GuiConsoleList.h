@@ -15,13 +15,7 @@
 #include "../GameData.h"
 #include "../FolderData.h"
 
-struct ConsoleItem
-{
-	std::string name;
-	ImageComponent* image;
-	AnimationComponent* label;
-	TextComponent* text;
-};
+#define ANIMATION_MILLIS 250
 
 //This is where the magic happens - GuiGameList is the parent of almost every graphical element in ES at the moment.
 //It has a TextListComponent child that handles the game list, a ThemeComponent that handles the theming system, and an ImageComponent for game images.
@@ -38,13 +32,26 @@ public:
 	bool goToNext();
 	bool goToPrev();
 
-	std::vector<ConsoleItem>* getConsoles();
-
 protected:
-	std::vector<ConsoleItem> mConsoleVector;
 	unsigned int mCurrentIndex;
 	GuiGameList* mGameList;
-	AnimationComponent* mAnimator;
+	
+	//HUD definition
+
+	GuiComponent* slider;
+	AnimationComponent* sliderAnimator;
+
+	ImageComponent* logo;
+	AnimationComponent* logoAnimator;
+
+	GuiComponent* text;
+	AnimationComponent* textAnimator;
+	TextComponent* tName;
+	TextComponent* tManufacturer;
+	TextComponent* tDate;
+
+	void setText(bool animate);
+	void setLogo(bool animate);
 };
 
 #endif

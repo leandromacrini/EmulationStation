@@ -20,11 +20,16 @@ namespace fs = boost::filesystem;
 std::string SystemData::getStartPath() { return mStartPath; }
 std::string SystemData::getExtension() { return mSearchExtension; }
 
-SystemData::SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image)
+SystemData::SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image, std::string logo, std::string relaseDate, std::string manufacturer, std::string platformId)
 {
 	mName = name;
 	mDescName = descName;
 	mImage = image;
+
+	mRelaseDate = relaseDate;
+	mManufacturer = manufacturer;
+	mPlatformId = platformId;
+	mLogo = logo;
 
 
 	//expand home symbol if the startpath contains ~
@@ -188,6 +193,26 @@ std::string SystemData::getDescName()
 	return mDescName;
 }
 
+std::string SystemData::getLogo()
+{
+	return mLogo;
+}
+
+std::string SystemData::getRelaseDate()
+{
+	return mRelaseDate;
+}
+
+std::string SystemData::getManufacturer()
+{
+	return mManufacturer;
+}
+
+std::string SystemData::getPlatformId()
+{
+	return mPlatformId;
+}
+
 //creates systems from information located in a config file
 void SystemData::loadConfig()
 {
@@ -197,81 +222,52 @@ void SystemData::loadConfig()
 
 	LOG(LogInfo) << "Loading system config file...";
 
-	std::ifstream file(path.c_str());
-	if(file.is_open())
+	if(boost::filesystem::exists(path))
 	{
-		size_t lineNr = 0;
-		std::string line;
-		std::string sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage;
-		while(file.good())
+		pugi::xml_document doc;
+		pugi::xml_parse_result result = doc.load_file(path.c_str());
+
+		if(!result)
 		{
-			lineNr++;
-			std::getline(file, line);
+			LOG(LogError) << "Could not parse System file!\n   " << result.description();
+			return;
+		}
 
-			//remove whitespace from line through STL and lambda magic
-			line.erase(std::remove_if(line.begin(), line.end(), [&](char c){ return std::string("\t\r\n\v\f").find(c) != std::string::npos; }), line.end());
+		pugi::xml_node root = doc.child("systems");
 
-			//skip blank lines and comments
-			if(line.empty() || line.at(0) == '#')
-				continue;
+		for(pugi::xml_node node = root.child("system"); node; node = node.next_sibling())
+		{
+			std::string sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage, sysLogo, sysRelaseDate, sysManufacturer, sysPlatformId;
 
-			//find the name (left of the equals sign) and the value (right of the equals sign)
-			bool lineValid = false;
-			std::string varName;
-			std::string varValue;
-			const std::string::size_type equalsPos = line.find('=', 1);
-			if(equalsPos != std::string::npos)
+			if(node.child("name")) sysName = node.child("name").text().as_string();
+			if(node.child("descname")) sysDescName = node.child("descname").text().as_string();
+			if(node.child("path")) sysPath = node.child("path").text().as_string();
+			if(node.child("extension")) sysExtension = node.child("extension").text().as_string();
+			if(node.child("command")) sysCommand = node.child("command").text().as_string();
+			if(node.child("image")) sysImage = node.child("image").text().as_string();
+			if(node.child("logo")) sysLogo = node.child("logo").text().as_string();
+			if(node.child("releasedate")) sysRelaseDate = node.child("releasedate").text().as_string();
+			if(node.child("manufacturer")) sysManufacturer = node.child("manufacturer").text().as_string();
+			if(node.child("platformid")) sysPlatformId = node.child("platformid").text().as_string();
+
+			//remove leading "/"
+			if(sysPath[sysPath.length() - 1] == '/') sysPath = sysPath.substr(0, sysPath.length() - 1);
+			
+			//convert path to generic directory seperators
+			boost::filesystem::path genericPath(sysPath);
+			sysPath = genericPath.generic_string();
+
+			//descrition check
+			if(sysDescName.empty()) sysDescName = sysName;
+
+			//we have all data, create SystemData and check games availability
+			SystemData* newSystem = new SystemData(sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage, sysLogo, sysRelaseDate, sysManufacturer, sysPlatformId);
+			if(newSystem->getRootFolder()->getFileCount() == 0)
 			{
-				lineValid = true;
-				varName = line.substr(0, equalsPos);
-				varValue = line.substr(equalsPos + 1, line.length() - 1);
-			}
-
-			if(lineValid)
-			{
-				//map the value to the appropriate variable
-				if(varName == "NAME")
-					sysName = varValue;
-				else if(varName == "DESCNAME")
-					sysDescName = varValue;
-				else if(varName == "PATH")
-				{
-					if(varValue[varValue.length() - 1] == '/')
-						sysPath = varValue.substr(0, varValue.length() - 1);
-					else
-						sysPath = varValue;
-					//convert path to generic directory seperators
-					boost::filesystem::path genericPath(sysPath);
-					sysPath = genericPath.generic_string();
-				}
-				else if(varName == "EXTENSION")
-					sysExtension = varValue;
-				else if(varName == "COMMAND")
-					sysCommand = varValue;
-				else if(varName == "IMAGE")
-					sysImage = varValue;
-
-				//we have all our variables - create the system object
-				if(!sysName.empty() && !sysPath.empty() &&!sysExtension.empty() && !sysCommand.empty() && !sysImage.empty())
-				{
-					if(sysDescName.empty())
-						sysDescName = sysName;
-
-					SystemData* newSystem = new SystemData(sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage);
-					if(newSystem->getRootFolder()->getFileCount() == 0)
-					{
-						LOG(LogWarning) << "System \"" << sysName << "\" has no games! Ignoring it.";
-						delete newSystem;
-					}else{
-						sSystemVector.push_back(newSystem);
-					}
-
-					//reset the variables for the next block (should there be one)
-					sysName = sysDescName = sysPath = sysExtension = sysCommand = sysImage = ""; 
-				}
+				LOG(LogWarning) << "System \"" << sysName << "\" has no games! Ignoring it.";
+				delete newSystem;
 			}else{
-				LOG(LogError) << "Error reading config file \"" << path << "\" - no equals sign found on line " << lineNr << ": \"" << line << "\"!";
-				return;
+				sSystemVector.push_back(newSystem);
 			}
 		}
 	}else{
@@ -346,7 +342,7 @@ std::string SystemData::getConfigPath()
 		return "";
 	}
 
-	return(home + "/.emulationstation/es_systems.cfg");
+	return(home + "/.emulationstation/es_systems.xml");
 }
 
 FolderData* SystemData::getRootFolder()
