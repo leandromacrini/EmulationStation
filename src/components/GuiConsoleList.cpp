@@ -41,13 +41,15 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 
 		std::string image = data->getImage();
 		ImageComponent* img = NULL;
-		
+
 		if( image.compare("none") != 0 )
 			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2, image, 0, (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 		else
 			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2,  SystemData::getBlankConsoleImagePath(), 0,  (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 
 		slider->addChild( img );
+
+		mImageVector.push_back(img);
 	}
 
 	//update slider total size
@@ -122,6 +124,8 @@ bool GuiConsoleList::input(InputConfig* config, Input input)
 		mWindow->pushGui(mGameList);
 		mGameList->setSystemId(mCurrentIndex);
 		mGameList->doVerticalTransition(-1);
+		//play theme sound
+		mGameList->getTheme()->getSound("menuScroll")->play();
 		return true;
 	}
 
@@ -140,19 +144,29 @@ bool GuiConsoleList::goToNext()
 	//avoid animation corruption
 	if(sliderAnimator->isAnimating()) return false;
 
+	//play theme sound
+	mGameList->getTheme()->getSound("menuScroll")->play();
+
 	if(mCurrentIndex+1 < SystemData::sSystemVector.size())
 	{
 
 		mCurrentIndex++;
 
+		hideHUD();
+
 		//animate slider
-		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS);
+		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS,
+			[this] ()
+		{
+			//animate logo
+			setLogo(true);
 
-		//animate logo
-		setLogo(true);
+			//animate text
+			setText(true);
 
-		//animate text
-		setText(true);
+			//resize current console
+			setImages(true);
+		});
 
 		return true;
 	}
@@ -165,18 +179,28 @@ bool GuiConsoleList::goToPrev()
 	//avoid animation corruption
 	if(sliderAnimator->isAnimating()) return false;
 
+	//play theme sound
+	mGameList->getTheme()->getSound("menuScroll")->play();
+
 	if(mCurrentIndex > 0)
 	{
 		mCurrentIndex--;
 
-		//animate slider
-		sliderAnimator->move(+(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS);
+		hideHUD();
 
-		//animate logo
-		setLogo(true);
-		
-		//animate text
-		setText(true);
+		//animate slider
+		sliderAnimator->move(Renderer::getScreenWidth() / 2, 0, ANIMATION_MILLIS,
+			[this] ()
+		{
+			//animate logo
+			setLogo(true);
+
+			//animate text
+			setText(true);
+			
+			//resize current console
+			setImages(true);
+		});
 
 		return true;
 	}
@@ -190,10 +214,13 @@ bool GuiConsoleList::setCurrentIndex(unsigned int index)
 	{
 		mCurrentIndex = index;
 		slider->setOffset(-(Renderer::getScreenWidth() / 2 * index), this->getOffset().y);
-		
+
 		setLogo(false);
 
 		setText(false);
+
+		//resize current console
+		setImages(false);
 
 		return true;
 	}
@@ -211,12 +238,12 @@ void GuiConsoleList::setText(bool animate)
 
 	int maxW = SDL_max( SDL_max(tName->getSize().x, tManufacturer->getSize().x), tDate->getSize().x);
 
-	text->setSize(maxW, 200);
+	text->setSize(maxW + 10, 200); //10 is the internal text left margin
 
 	if(animate)
 	{
-		text->setOffset(- text->getSize().x, 0);
-		textAnimator->move(text->getSize().x, 0, ANIMATION_MILLIS);
+		hideHUD();
+		textAnimator->move(text->getSize().x, 0, ANIMATION_MILLIS*2);
 	} else {
 		text->setOffset(0,0);
 	}
@@ -229,13 +256,35 @@ void GuiConsoleList::setLogo(bool animate)
 
 	logo->setImage(SystemData::sSystemVector.at(mCurrentIndex)->getLogo()); //TODO DYNAMIC
 	logo->setResize(Renderer::getScreenWidth() /2, 0, true);
-	
 
 	if(animate)
 	{
-		logo->setOffset(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight());
-		logoAnimator->move(0, -(Renderer::getScreenHeight()/4), ANIMATION_MILLIS);
+		hideHUD();
+		logoAnimator->move(0, -(Renderer::getScreenHeight()/4), ANIMATION_MILLIS/4);
 	} else {
 		logo->setOffset(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
 	}
+}
+
+void GuiConsoleList::setImages(bool animate)
+{
+	for(unsigned int i = 0; i < SystemData::sSystemVector.size(); i++)
+	{
+		ImageComponent* img = mImageVector.at(i);
+
+		if(i == mCurrentIndex)
+		{
+			img->setResize(0, (unsigned int)(Renderer::getScreenHeight()/2), true);
+			img->setOpacity(255);
+		} else {
+			img->setResize(0, (unsigned int)(Renderer::getScreenHeight()/5), true);
+			img->setOpacity(150);
+		}
+	}
+}
+
+void GuiConsoleList::hideHUD()
+{
+	text->setOffset(- text->getSize().x, 0);
+	logo->setOffset(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight());
 }

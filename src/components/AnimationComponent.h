@@ -3,17 +3,16 @@
 
 #include "../GuiComponent.h"
 #include <vector>
-
-#define ANIMATION_TICK_SPEED 16
+#include <functional>
 
 class AnimationComponent
 {
 public:
 	AnimationComponent();
 
-	void move(int x, int y, int speed);
-	void fadeIn(int time);
-	void fadeOut(int time);
+	void move(int x, int y, int speed, std::tr1::function<void()> callback = nullptr);
+	void fadeIn(int time, std::tr1::function<void()> callback = nullptr);
+	void fadeOut(int time, std::tr1::function<void()> callback = nullptr);
 
 	void update(int deltaTime);
 	void reset();
@@ -33,7 +32,7 @@ private:
 	int mFadeRate;
 	int mMoveX, mMoveY, mMoveSpeed;
 
-	int mAccumulator;
+	std::tr1::function<void()> mCallback;
 };
 
 #endif

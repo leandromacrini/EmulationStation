@@ -47,6 +47,7 @@ public:
 	bool isDetailed() const;
 	void doTransition(int dir);
 	void doVerticalTransition(int dir);
+	ThemeComponent* getTheme();
 
 	static const float sInfoWidth;
 private:

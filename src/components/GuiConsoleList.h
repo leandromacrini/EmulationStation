@@ -31,6 +31,7 @@ public:
 	bool setCurrentIndex(unsigned int index);
 	bool goToNext();
 	bool goToPrev();
+	void hideHUD();
 
 protected:
 	unsigned int mCurrentIndex;
@@ -50,8 +51,11 @@ protected:
 	TextComponent* tManufacturer;
 	TextComponent* tDate;
 
+	std::vector<ImageComponent*> mImageVector;
+
 	void setText(bool animate);
 	void setLogo(bool animate);
+	void setImages(bool animate);
 };
 
 #endif

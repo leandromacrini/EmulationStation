@@ -7,27 +7,33 @@ AnimationComponent::AnimationComponent()
 	mMoveSpeed = 0;
 	mFadeRate = 0;
 	mOpacity = 0;
-	mAccumulator = 0;
 }
 
-void AnimationComponent::move(int x, int y, int speed)
+
+
+void AnimationComponent::move(int x, int y, int speed, std::tr1::function<void()> callback)
 {
-	//adding the new value to mMove* permit to chain animation and start from where was the not completed animation
-	mMoveX += x;
-	mMoveY += y;
+	mCallback = callback;
+
+	mMoveX = x;
+	mMoveY = y;
 	mMoveSpeed = speed;
 }
 
-void AnimationComponent::fadeIn(int time)
+void AnimationComponent::fadeIn(int time, std::tr1::function<void()> callback)
 {
+	mCallback = callback;
+
 	mOpacity = 0;
 	setChildrenOpacity(0);
 
 	mFadeRate = time;
 }
 
-void AnimationComponent::fadeOut(int time)
+void AnimationComponent::fadeOut(int time, std::tr1::function<void()> callback)
 {
+	mCallback = callback;
+
 	mOpacity = 255;
 	setChildrenOpacity(255);
 
@@ -51,8 +57,7 @@ void AnimationComponent::update(int deltaTime)
 			deltaX = mMoveX;
 			deltaY = mMoveY;
 
-			reset();
-
+			mMoveSpeed = 0;
 		}
 		else
 		{	
@@ -60,6 +65,12 @@ void AnimationComponent::update(int deltaTime)
 			mMoveY -= deltaY;
 
 			mMoveSpeed -= deltaTime;
+		}
+
+		if(mMoveSpeed == 0 ){
+			if(mCallback != nullptr) mCallback();
+
+			reset();
 		}
 
 		moveChildren(deltaX, deltaY);
@@ -86,12 +97,24 @@ void AnimationComponent::update(int deltaTime)
 		{
 			mFadeRate = 0;
 			opacity = 255;
+
+			//if we have a callback, call it
+			if(mCallback != NULL) mCallback();
+			
+			reset();
+
 		}
 
 		if(opacity < 0)
 		{
 			mFadeRate = 0;
 			opacity = 0;
+
+			//if we have a callback, call it
+			if(mCallback != NULL) mCallback();
+			
+			reset();
+
 		}
 
 		mOpacity = (unsigned char)opacity;
@@ -108,6 +131,8 @@ bool AnimationComponent::isAnimating()
 
 void AnimationComponent::reset()
 {
+	mCallback = nullptr;
+
 	mMoveX = 0;
 	mMoveY = 0;
 	mMoveSpeed = 0;

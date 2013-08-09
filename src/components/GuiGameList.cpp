@@ -16,6 +16,11 @@ Vector2i GuiGameList::getImagePos()
 	return Vector2i((int)(Renderer::getScreenWidth() * mTheme->getFloat("gameImageOffsetX")), (int)(Renderer::getScreenHeight() * mTheme->getFloat("gameImageOffsetY")));
 }
 
+ThemeComponent* GuiGameList::getTheme()
+{
+	return mTheme;
+}
+
 bool GuiGameList::isDetailed() const
 {
 	if(mSystem == NULL)
@@ -196,21 +201,21 @@ bool GuiGameList::input(InputConfig* config, Input input)
 	}
 
 	//only allow switching systems if more than one exists (otherwise it'll reset your position when you switch and it's annoying)
-	if(SystemData::sSystemVector.size() > 1 && input.value != 0)
-	{
-		if(config->isMappedTo("right", input))
-		{
-			setSystemId(mSystemId + 1);
-			doTransition(-1);
-			return true;
-		}
-		if(config->isMappedTo("left", input))
-		{
-			setSystemId(mSystemId - 1);
-			doTransition(1);
-			return true;
-		}
-	}
+	//if(SystemData::sSystemVector.size() > 1 && input.value != 0)
+	//{
+	//	if(config->isMappedTo("right", input))
+	//	{
+	//		setSystemId(mSystemId + 1);
+	//		doTransition(-1);
+	//		return true;
+	//	}
+	//	if(config->isMappedTo("left", input))
+	//	{
+	//		setSystemId(mSystemId - 1);
+	//		doTransition(1);
+	//		return true;
+	//	}
+	//}
 
 	//change sort order
 	if(config->isMappedTo("sortordernext", input) && input.value != 0) {
@@ -383,6 +388,7 @@ void GuiGameList::updateDetailData()
 			Vector2i imgOffset = Vector2i((int)(Renderer::getScreenWidth() * 0.10f), 0);
 			mScreenshot.setOffset(getImagePos() - imgOffset);
 
+			mImageAnimation.reset();
 			mImageAnimation.fadeIn(35);
 			mImageAnimation.move(imgOffset.x, imgOffset.y, 300);
 
