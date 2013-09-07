@@ -5,6 +5,9 @@
 #include <vector>
 #include <functional>
 
+//just fyi, this is easily the worst animation system i've ever written.
+//it was mostly written during a single lecture and it really shows in how un-thought-out it is
+//it also hasn't been converted to use floats or vectors yet
 class AnimationComponent
 {
 public:

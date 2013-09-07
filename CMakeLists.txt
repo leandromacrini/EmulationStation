@@ -153,6 +153,7 @@ set(ES_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiConsoleList.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiFastSelect.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiConsoleList.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiMetaDataEd.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiGameList.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiInputConfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiMenu.h

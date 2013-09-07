@@ -117,9 +117,6 @@ void GuiGameList::setSystemId(int id)
 
 void GuiGameList::render(const Eigen::Affine3f& parentTrans)
 {
-	//add a default plain background
-	Renderer::drawRect(0,0,Renderer::getScreenWidth(), Renderer::getScreenHeight(), 0xFFFFFFFF);
-
 	Eigen::Affine3f trans = parentTrans * getTransform();
 	renderChildren(trans);
 }

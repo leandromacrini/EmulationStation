@@ -31,7 +31,6 @@ SystemData::SystemData(const std::string& name, const std::string& descName, con
 	mManufacturer = manufacturer;
 	mLogo = logo;
 
-
 	//expand home symbol if the startpath contains ~
 	if(mStartPath[0] == '~')
 	{
@@ -177,14 +176,14 @@ void SystemData::populateFolder(FolderData* folder)
 	}
 }
 
-std::string SystemData::getName()
-{
-	return mName;
-}
-
 std::string SystemData::getDescName()
 {
 	return mDescName;
+}
+
+std::string SystemData::getName()
+{
+	return mName;
 }
 
 //creates systems from information located in a config file
@@ -215,7 +214,7 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 	}
 
 	//actually read the file
-	pugi::xml_node systemList = doc.child("systems"); //TODO ("systemList");
+	pugi::xml_node systemList = doc.child("systemList");
 
 	for(pugi::xml_node system = systemList.child("system"); system; system = system.next_sibling("system"))
 	{
@@ -242,6 +241,7 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 		path = genericPath.generic_string();
 
 		SystemData* newSys = new SystemData(name, descname, path, ext, cmd, image, logo, releasedate, manufacturer);
+
 		if(newSys->getRootFolder()->getFileCount() == 0)
 		{
 			LOG(LogWarning) << "System \"" << name << "\" has no games! Ignoring it.";
@@ -325,7 +325,7 @@ std::string SystemData::getBlankConsoleImagePath()
 	std::string home = getHomePath();
 	if(home.empty())
 	{
-		LOG(LogError) << "$HOME environment variable empty or nonexistant!";
+		LOG(LogError) << "Home path environment variable empty or nonexistant!";
 		exit(1);
 		return "";
 	}

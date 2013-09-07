@@ -102,7 +102,6 @@ void AnimationComponent::update(int deltaTime)
 			if(mCallback != NULL) mCallback();
 			
 			reset();
-
 		}
 
 		if(opacity < 0)
@@ -147,7 +146,7 @@ void AnimationComponent::addChild(GuiComponent* gui)
 
 void AnimationComponent::moveChildren(int offsetx, int offsety)
 {
-	Eigen::Vector3f move(offsetx, offsety, 0);
+	Eigen::Vector3f move((float)offsetx, (float)offsety, 0);
 	for(unsigned int i = 0; i < mChildren.size(); i++)
 	{
 		GuiComponent* comp = mChildren.at(i);
