@@ -173,15 +173,15 @@ bool GuiGameList::input(InputConfig* config, Input input)
 	//if there's something on the directory stack, return to it
 	if(config->isMappedTo("b", input) && input.value != 0)
 	{
+		//play the back sound
+		mTheme->getSound("menuBack")->play();
+
 		if(mFolderStack.size())
 		{
 			mFolder = mFolderStack.top();
 			mFolderStack.pop();
 			updateList();
 			updateDetailData();
-
-			//play the back sound
-			mTheme->getSound("menuBack")->play();
 		}
 		else
 		{
