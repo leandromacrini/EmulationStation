@@ -2,7 +2,7 @@
 #define _GUICOMPONENT_H_
 
 #include "InputConfig.h"
-#include "Vector2.h"
+#include <Eigen/Dense>
 
 class Window;
 
@@ -12,6 +12,8 @@ public:
 	GuiComponent(Window* window);
 	virtual ~GuiComponent();
 
+	virtual void textInput(const char* text);
+
 	//Called when input is received.
 	//Return true if the input is consumed, false if it should continue to be passed to other children.
 	virtual bool input(InputConfig* config, Input input);
@@ -19,48 +21,58 @@ public:
 	//Called when time passes.  Default implementation also calls update(deltaTime) on children - so you should probably call GuiComponent::update(deltaTime) at some point.
 	virtual void update(int deltaTime);
 
-	//Called when it's time to render.  Translates the OpenGL matrix, calls onRender() (which renders children), then un-translates the OpenGL matrix.
-	//You probably don't need to override this, and should use the protected method onRender.
-	virtual void render();
+	//Called when it's time to render.  By default, just calls renderChildren(parentTrans * getTransform()).
+	//You probably want to override this like so:
+	//1. Calculate the new transform that your control will draw at with Eigen::Affine3f t = parentTrans * getTransform().
+	//2. Set the renderer to use that new transform as the model matrix - Renderer::setMatrix(t);
+	//3. Draw your component.
+	//4. Tell your children to render, based on your component's transform - renderChildren(t).
+	virtual void render(const Eigen::Affine3f& parentTrans);
 
-	//Called when the Renderer initializes.  Passes to children.
-	virtual void init();
+	Eigen::Vector3f getPosition() const;
+	void setPosition(const Eigen::Vector3f& offset);
+	void setPosition(float x, float y, float z = 0.0f);
+	virtual void onPositionChanged() {};
 
-	//Called when the Renderer deinitializes.  Passes to children.
-	virtual void deinit();
-
-	virtual Vector2i getGlobalOffset();
-	Vector2i getOffset();
-	void setOffset(Vector2i offset);
-	void setOffset(int x, int y);
-	virtual void onOffsetChanged() {};
-
-	Vector2u getSize();
-    void setSize(Vector2u size);
-    void setSize(unsigned int w, unsigned int h);
+	Eigen::Vector2f getSize() const;
+    void setSize(const Eigen::Vector2f& size);
+    void setSize(float w, float h);
     virtual void onSizeChanged() {};
 	
 	void setParent(GuiComponent* parent);
-	GuiComponent* getParent();
+	GuiComponent* getParent() const;
 
 	void addChild(GuiComponent* cmp);
 	void removeChild(GuiComponent* cmp);
 	void clearChildren();
-	unsigned int getChildCount();
-	GuiComponent* getChild(unsigned int i);
-	unsigned char getOpacity();
+	unsigned int getChildCount() const;
+	GuiComponent* getChild(unsigned int i) const;
+
+	unsigned char getOpacity() const;
 	void setOpacity(unsigned char opacity);
 
+	const Eigen::Affine3f getTransform();
+
+	virtual std::string getValue() const;
+	virtual void setValue(const std::string& value);
+
+	virtual void onFocusGained() {};
+	virtual void onFocusLost() {};
+
 protected:
-	//Default implementation just renders children - you should probably always call GuiComponent::onRender at some point in your custom onRender.
-	virtual void onRender();
+	void renderChildren(const Eigen::Affine3f& transform) const;
 
 	unsigned char mOpacity;
 	Window* mWindow;
+
 	GuiComponent* mParent;
-	Vector2i mOffset;
-	Vector2u mSize;
 	std::vector<GuiComponent*> mChildren;
+
+	Eigen::Vector3f mPosition;
+	Eigen::Vector2f mSize;
+
+private:
+	Eigen::Affine3f mTransform; //Don't access this directly! Use getTransform()!
 };
 
 #endif

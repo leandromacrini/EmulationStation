@@ -147,11 +147,11 @@ void AnimationComponent::addChild(GuiComponent* gui)
 
 void AnimationComponent::moveChildren(int offsetx, int offsety)
 {
-	Vector2i move(offsetx, offsety);
+	Eigen::Vector3f move(offsetx, offsety, 0);
 	for(unsigned int i = 0; i < mChildren.size(); i++)
 	{
 		GuiComponent* comp = mChildren.at(i);
-		comp->setOffset(comp->getOffset() + move);
+		comp->setPosition(comp->getPosition() + move);
 	}
 }
 

@@ -4,13 +4,16 @@
 
 #define INITIAL_CELL_SIZE 12
 
-ComponentListComponent::ComponentListComponent(Window* window, Vector2u gridDimensions) : GuiComponent(window), mGrid(NULL), mColumnWidths(NULL), mRowHeights(NULL)
+ComponentListComponent::ComponentListComponent(Window* window, Eigen::Vector2i gridDimensions) : GuiComponent(window), 
+	mGrid(NULL), mColumnWidths(NULL), mRowHeights(NULL), 
+	mColumnWidthForced(NULL), mRowHeightForced(NULL), 
+	mCursor(-1, -1)
 {
-	mEntries.reserve(gridDimensions.x*gridDimensions.y);
+	mEntries.reserve(gridDimensions.x() * gridDimensions.y());
 	makeCells(gridDimensions);
 }
 
-void ComponentListComponent::makeCells(Vector2u size)
+void ComponentListComponent::makeCells(Eigen::Vector2i size)
 {
 	if(mGrid)
 		delete[] mGrid;
@@ -20,23 +23,29 @@ void ComponentListComponent::makeCells(Vector2u size)
 		delete[] mRowHeights;
 	
 	mGridSize = size;
-	mGrid = new ComponentEntry*[size.x * size.y];
-	std::fill(mGrid, mGrid + (size.x * size.y), (ComponentEntry*)NULL);
+	mGrid = new ComponentEntry*[size.x() * size.y()];
+	std::fill(mGrid, mGrid + (size.x() * size.y()), (ComponentEntry*)NULL);
 
-	mColumnWidths = new unsigned int[size.x];
-	std::fill(mColumnWidths, mColumnWidths + size.x, INITIAL_CELL_SIZE);
+	mColumnWidths = new unsigned int[size.x()];
+	std::fill(mColumnWidths, mColumnWidths + size.x(), INITIAL_CELL_SIZE);
 	
-	mRowHeights = new unsigned int[size.y];
-	std::fill(mRowHeights, mRowHeights + size.y, INITIAL_CELL_SIZE);
+	mRowHeights = new unsigned int[size.y()];
+	std::fill(mRowHeights, mRowHeights + size.y(), INITIAL_CELL_SIZE);
+
+	mColumnWidthForced = new bool[size.x()];
+	std::fill(mColumnWidthForced, mColumnWidthForced + size.x(), false);
+
+	mRowHeightForced = new bool[size.y()];
+	std::fill(mRowHeightForced, mRowHeightForced + size.y(), false);
 
 	updateSize();
 	resetCursor();
 }
 
-void ComponentListComponent::setEntry(Vector2u pos, Vector2u size, GuiComponent* component, bool canFocus, AlignmentType align, 
-	Vector2<bool> autoFit, UpdateBehavior updateType)
+void ComponentListComponent::setEntry(Eigen::Vector2i pos, Eigen::Vector2i size, GuiComponent* component, bool canFocus, AlignmentType align, 
+	Eigen::Matrix<bool, 1, 2> autoFit, UpdateBehavior updateType)
 {
-	if(pos.x > mGridSize.x || pos.y > mGridSize.y)
+	if(pos.x() > mGridSize.x() || pos.y() > mGridSize.y() || pos.x() < 0 || pos.y() < 0)
 	{
 		LOG(LogError) << "Tried to set entry beyond grid size!";
 		return;
@@ -48,13 +57,13 @@ void ComponentListComponent::setEntry(Vector2u pos, Vector2u size, GuiComponent*
 		return;
 	}
 
-	ComponentEntry entry(Rect(pos.x, pos.y, size.x, size.y), component, updateType, canFocus, align);
+	ComponentEntry entry(Eigen::Vector2i(pos.x(), pos.y()), Eigen::Vector2i(size.x(), size.y()), component, updateType, canFocus, align);
 	
 	mEntries.push_back(entry);
 
-	for(unsigned int y = pos.y; y < pos.y + size.y; y++)
+	for(int y = pos.y(); y < pos.y() + size.y(); y++)
 	{
-		for(unsigned int x = pos.x; x < pos.x + size.x; x++)
+		for(int x = pos.x(); x < pos.x() + size.x(); x++)
 		{
 			setCell(x, y, &mEntries.back());
 		}
@@ -65,106 +74,171 @@ void ComponentListComponent::setEntry(Vector2u pos, Vector2u size, GuiComponent*
 	component->setParent(this);
 
 	if(!cursorValid() && canFocus)
-		mCursor = (Vector2i)pos;
+		mCursor = pos;
 
 	//update the column width and row height
-	if(autoFit.x && getColumnWidth(pos.x) < component->getSize().x)
-		setColumnWidth(pos.x, component->getSize().x);
-	if(autoFit.y && getRowHeight(pos.y) < component->getSize().y)
-		setRowHeight(pos.y, component->getSize().y);
+	//if(autoFit.x() && (int)getColumnWidth(pos.x()) < component->getSize().x())
+	//	setColumnWidth(pos.x(), (unsigned int)component->getSize().x());
+	//if(autoFit.y() && (int)getRowHeight(pos.y()) < component->getSize().y())
+	//	setRowHeight(pos.y(), (unsigned int)component->getSize().y());
+	updateCellSize(&mEntries.back(), autoFit.x(), autoFit.y());
 
-	component->setOffset(getCellOffset(pos));
+	component->setPosition(getCellOffset(pos));
+
+	updateSize();
 }
 
-void ComponentListComponent::setRowHeight(int row, unsigned int size)
+void ComponentListComponent::forceRowHeight(int row, unsigned int size)
 {
 	mRowHeights[row] = size;
+	mRowHeightForced[row] = true;
 	updateSize();
+	updateComponentOffsets();
 }
 
-void ComponentListComponent::setColumnWidth(int col, unsigned int size)
+void ComponentListComponent::forceColumnWidth(int col, unsigned int size)
 {
 	mColumnWidths[col] = size;
+	mRowHeightForced[col] = true;
 	updateSize();
+	updateComponentOffsets();
 }
 
 unsigned int ComponentListComponent::getRowHeight(int row) { return mRowHeights[row]; }
 unsigned int ComponentListComponent::getColumnWidth(int col) { return mColumnWidths[col]; }
 
-Vector2i ComponentListComponent::getCellOffset(Vector2u pos)
+Eigen::Vector3f ComponentListComponent::getCellOffset(Eigen::Vector2i pos)
 {
-	Vector2i offset;
+	Eigen::Vector3f offset(0, 0, 0);
 
-	for(unsigned int y = 0; y < pos.y; y++)
-		offset.y += getRowHeight(y);
+	for(int y = 0; y < pos.y(); y++)
+		offset[1] += getRowHeight(y);
 	
-	for(unsigned int x = 0; x < pos.x; x++)
-		offset.x += getColumnWidth(x);
+	for(int x = 0; x < pos.x(); x++)
+		offset[0] += getColumnWidth(x);
 
-	ComponentEntry* entry = getCell(pos.x, pos.y);
+	ComponentEntry* entry = getCell(pos.x(), pos.y());
 
-	Vector2u gridSize;
-	for(unsigned int x = pos.x; x < pos.x + entry->box.size.x; x++)
-		gridSize.x += getColumnWidth(x);
-	for(unsigned int y = pos.y; y < pos.y + entry->box.size.y; y++)
-		gridSize.y += getRowHeight(y);
+	Eigen::Vector2i gridSize(0, 0);
+	for(int x = pos.x(); x < pos.x() + entry->dim[0]; x++)
+		gridSize[0] += getColumnWidth(x);
+	for(int y = pos.y(); y < pos.y() + entry->dim[1]; y++)
+		gridSize[1] += getRowHeight(y);
 
 	//if AlignCenter, add half of cell width - half of control width
 	if(entry->alignment == AlignCenter)
-		offset.x += gridSize.x / 2 - entry->component->getSize().x / 2;
+		offset[0] += gridSize.x() / 2 - entry->component->getSize().x() / 2;
 
 	//if AlignRight, add cell width - control width
 	if(entry->alignment == AlignRight)
-		offset.x += gridSize.x - entry->component->getSize().x;
+		offset[0] += gridSize.x() - entry->component->getSize().x();
 
 	//always center on the Y axis
-	offset.y += gridSize.y / 2 - entry->component->getSize().y / 2;
+	offset[1] += gridSize.y() / 2.0f - entry->component->getSize().y() / 2.0f;
 
 	return offset;
 }
 
 void ComponentListComponent::setCell(unsigned int x, unsigned int y, ComponentEntry* entry)
 {
-	if(x < 0 || y < 0 || x >= mGridSize.x || y >= mGridSize.y)
+	if(x >= (unsigned int)mGridSize.x() || y >= (unsigned int)mGridSize.y())
 	{
 		LOG(LogError) << "Invalid setCell - position " << x << ", " << y << " out of bounds!";
 		return;
 	}
 
-	mGrid[y * mGridSize.x + x] = entry;
+	mGrid[y * mGridSize.x() + x] = entry;
 }
 
 ComponentListComponent::ComponentEntry* ComponentListComponent::getCell(unsigned int x, unsigned int y)
 {
-	if(x < 0 || y < 0 || x >= mGridSize.x || y >= mGridSize.y)
+	if(x >= (unsigned int)mGridSize.x() || y >= (unsigned int)mGridSize.y())
 	{
 		LOG(LogError) << "Invalid getCell - position " << x << ", " << y << " out of bounds!";
 		return NULL;
 	}
 
-	return mGrid[y * mGridSize.x + x];
+	return mGrid[y * mGridSize.x() + x];
 }
 
 void ComponentListComponent::updateSize()
 {
-	mSize = Vector2u(0, 0);
-	for(unsigned int x = 0; x < mGridSize.x; x++)
-		mSize.x += getColumnWidth(x);
-	for(unsigned int y = 0; y < mGridSize.y; y++)
-		mSize.y += getRowHeight(y);
+	mSize = Eigen::Vector2f(0, 0);
+	for(int x = 0; x < mGridSize.x(); x++)
+		mSize.x() += getColumnWidth(x);
+	for(int y = 0; y < mGridSize.y(); y++)
+		mSize.y() += getRowHeight(y);
 }
 
 void ComponentListComponent::updateComponentOffsets()
 {
 	for(auto iter = mEntries.begin(); iter != mEntries.end(); iter++)
 	{
-		iter->component->setOffset(getCellOffset((Vector2u)iter->box.pos));
+		iter->component->setPosition(getCellOffset(iter->pos));
+	}
+}
+
+void ComponentListComponent::updateCellSize(ComponentEntry* e, bool updWidth, bool updHeight)
+{
+	if(!e)
+	{
+		LOG(LogError) << "Tried to updateCellSize NULL ComponentEntry!";
+		return;
+	}
+
+	unsigned int x = e->pos.x();
+	unsigned int y = e->pos.y();
+
+	if(!mColumnWidthForced[x] && updWidth)
+	{
+		//recalc width to widest in column
+		float widest = 0;
+		for(int row = 0; row < mGridSize.y(); row++)
+		{
+			ComponentEntry* check = getCell(x, row);
+			if(check)
+			{
+				if(check->component->getSize().x() > widest)
+					widest = check->component->getSize().x();
+			}
+		}
+
+		mColumnWidths[x] = (unsigned int)widest;
+	}
+	if(!mRowHeightForced[y] && updHeight)
+	{
+		float tallest = 0;
+		for(int col = 0; col < mGridSize.x(); col++)
+		{
+			ComponentEntry* check = getCell(col, y);
+			if(check)
+			{
+				if(check->component->getSize().y() > tallest)
+					tallest = check->component->getSize().y();
+			}
+		}
+
+		mRowHeights[y] = (unsigned int)tallest;
+	}
+
+	updateComponentOffsets();
+	updateSize();
+}
+
+void ComponentListComponent::updateComponent(GuiComponent* cmp)
+{
+	for(auto iter = mEntries.begin(); iter != mEntries.end(); iter++)
+	{
+		if(iter->component == cmp)
+		{
+			updateCellSize(&(*iter));
+		}
 	}
 }
 
 bool ComponentListComponent::input(InputConfig* config, Input input)
 {
-	if(cursorValid() && getCell(mCursor.x, mCursor.y)->component->input(config, input))
+	if(cursorValid() && getCell(mCursor.x(), mCursor.y())->component->input(config, input))
 		return true;
 
 	if(!input.value)
@@ -172,12 +246,22 @@ bool ComponentListComponent::input(InputConfig* config, Input input)
 
 	if(config->isMappedTo("down", input))
 	{
-		moveCursor(Vector2i(0, 1));
+		moveCursor(Eigen::Vector2i(0, 1));
 		return true;
 	}
 	if(config->isMappedTo("up", input))
 	{
-		moveCursor(Vector2i(0, -1));
+		moveCursor(Eigen::Vector2i(0, -1));
+		return true;
+	}
+	if(config->isMappedTo("left", input))
+	{
+		moveCursor(Eigen::Vector2i(-1, 0));
+		return true;
+	}
+	if(config->isMappedTo("right", input))
+	{
+		moveCursor(Eigen::Vector2i(1, 0));
 		return true;
 	}
 
@@ -188,56 +272,72 @@ void ComponentListComponent::resetCursor()
 {
 	if(mEntries.size() == 0)
 	{
-		mCursor = Vector2i(-1, -1);
+		mCursor = Eigen::Vector2i(-1, -1);
 		return;
 	}
 
-	mCursor = mEntries.at(0).box.pos;
+	const Eigen::Vector2i origCursor = mCursor;
+	mCursor << mEntries.at(0).pos[0], mEntries.at(0).pos[1];
+	onCursorMoved(origCursor, mCursor);
 }
 
-void ComponentListComponent::moveCursor(Vector2i dir)
+void ComponentListComponent::moveCursor(Eigen::Vector2i dir)
 {
-	if(dir.x != 0 && dir.y != 0)
+	if(dir.x() != 0 && dir.y() != 0)
 	{
 		LOG(LogError) << "Invalid cursor move dir!";
 		return;
 	}
 
+	Eigen::Vector2i origCursor = mCursor;
+
 	if(!cursorValid())
 	{
 		resetCursor();
+
 		if(!cursorValid())
+		{
+			if(mCursor != origCursor)
+				onCursorMoved(origCursor, mCursor);
+
 			return;
+		}
 	}
 
-	Vector2i origCursor = mCursor;
+	Eigen::Vector2i searchAxis(dir.x() == 0, dir.y() == 0);
 	
-	Vector2i searchAxis(dir.x == 0, dir.y == 0);
-	
-	while(mCursor.x >= 0 && mCursor.y >= 0 && mCursor.x < (int)mGridSize.x && mCursor.y < (int)mGridSize.y)
+	while(mCursor.x() >= 0 && mCursor.y() >= 0 && mCursor.x() < mGridSize.x() && mCursor.y() < mGridSize.y())
 	{
 		mCursor = mCursor + dir;
 
-		Vector2i curDirPos = mCursor;
+		Eigen::Vector2i curDirPos = mCursor;
 
 		//spread out on search axis+
-		while(mCursor.x < (int)mGridSize.x && mCursor.y < (int)mGridSize.y)
+		while(mCursor.x() < mGridSize.x() && mCursor.y() < mGridSize.y())
 		{
-			if(cursorValid() && getCell(mCursor.x, mCursor.y)->canFocus)
+			if(cursorValid() && getCell(mCursor.x(), mCursor.y())->canFocus)
+			{
+				onCursorMoved(origCursor, mCursor);
 				return;
+			}
 
 			mCursor += searchAxis;
 		}
 
 		//now again on search axis-
 		mCursor = curDirPos;
-		while(mCursor.x >= 0 && mCursor.y >= 0)
+		while(mCursor.x() >= 0 && mCursor.y() >= 0)
 		{
-			if(cursorValid() && getCell(mCursor.x, mCursor.y)->canFocus)
+			if(cursorValid() && getCell(mCursor.x(), mCursor.y())->canFocus)
+			{
+				onCursorMoved(origCursor, mCursor);
 				return;
+			}
 
 			mCursor -= searchAxis;
 		}
+
+		mCursor = curDirPos;
 	}
 
 	//failed to find another focusable element in this direction
@@ -246,67 +346,81 @@ void ComponentListComponent::moveCursor(Vector2i dir)
 
 bool ComponentListComponent::cursorValid()
 {
-	if(mCursor.x < 0 || mCursor.y < 0 || mCursor.x >= (int)mGridSize.x || mCursor.y >= (int)mGridSize.y)
+	if(mCursor.x() < 0 || mCursor.y() < 0 || mCursor.x() >= mGridSize.x() || mCursor.y() >= mGridSize.y())
 		return false;
 
-	return getCell(mCursor.x, mCursor.y) != NULL;
+	return getCell(mCursor.x(), mCursor.y()) != NULL;
 }
 
 void ComponentListComponent::update(int deltaTime)
 {
 	for(auto iter = mEntries.begin(); iter != mEntries.end(); iter++)
 	{
-		if(iter->updateType == UpdateAlways)
+		switch(iter->updateType)
 		{
+		case UpdateAlways:
 			iter->component->update(deltaTime);
-			continue;
-		}
+			break;
 
-		if(iter->updateType == UpdateFocused && cursorValid() && getCell(mCursor.x, mCursor.y)->component == iter->component)
-		{
-			iter->component->update(deltaTime);
-			continue;
+		case UpdateFocused:
+			if(cursorValid() && getCell(mCursor.x(), mCursor.y())->component == iter->component)
+				iter->component->update(deltaTime);
+			break;
 		}
 	}
 }
 
-void ComponentListComponent::onRender()
+void ComponentListComponent::render(const Eigen::Affine3f& parentTrans)
 {
-	Renderer::drawRect(0, 0, getSize().x, getSize().y, 0xFFFFFFAA);
+	Eigen::Affine3f trans = parentTrans * getTransform();
+	Renderer::setMatrix(trans);
+
+	Renderer::drawRect(0, 0, (int)getSize().x(), (int)getSize().y(), 0xFFFFFFAA);
 
 	for(auto iter = mEntries.begin(); iter != mEntries.end(); iter++)
 	{
-		iter->component->render();
+		iter->component->render(trans);
 	}
 
+	
 	//draw cell outlines
-	/*Vector2i pos;
-	for(unsigned int x = 0; x < mGridSize.x; x++)
+	/*Renderer::setMatrix(trans);
+	Eigen::Vector2i pos(0, 0);
+	for(int x = 0; x < mGridSize.x(); x++)
 	{
-		for(unsigned int y = 0; y < mGridSize.y; y++)
+		for(int y = 0; y < mGridSize.y(); y++)
 		{
-			Renderer::drawRect(pos.x, pos.y, getColumnWidth(x), 2, 0x000000AA);
-			Renderer::drawRect(pos.x, pos.y, 2, getRowHeight(y), 0x000000AA);
-			Renderer::drawRect(pos.x + getColumnWidth(x), pos.y, 2, getRowHeight(y), 0x000000AA);
-			Renderer::drawRect(pos.x, pos.y + getRowHeight(y) - 2, getColumnWidth(x), 2, 0x000000AA);
+			Renderer::drawRect(pos.x(), pos.y(), getColumnWidth(x), 2, 0x000000AA);
+			Renderer::drawRect(pos.x(), pos.y(), 2, getRowHeight(y), 0x000000AA);
+			Renderer::drawRect(pos.x() + getColumnWidth(x), pos.y(), 2, getRowHeight(y), 0x000000AA);
+			Renderer::drawRect(pos.x(), pos.y() + getRowHeight(y) - 2, getColumnWidth(x), 2, 0x000000AA);
 
-			pos.y += getRowHeight(y);
+			pos[1] += getRowHeight(y);
 		}
 
-		pos.y = 0;
-		pos.x += getColumnWidth(x);
+		pos[1] = 0;
+		pos[0] += getColumnWidth(x);
 	}*/
 
 	//draw cursor
 	if(cursorValid())
 	{
-		ComponentEntry* entry = getCell(mCursor.x, mCursor.y);
-		Renderer::drawRect(entry->component->getOffset().x, entry->component->getOffset().y, 4, 4, 0xFF0000FF);
-		Renderer::drawRect(entry->component->getOffset().x, entry->component->getOffset().y, entry->component->getSize().x, entry->component->getSize().y, 0x0000AA88);
+		ComponentEntry* entry = getCell(mCursor.x(), mCursor.y());
+		Eigen::Affine3f entryTrans = trans * entry->component->getTransform();
+		Renderer::setMatrix(entryTrans);
+
+		Renderer::drawRect(0, 0, 4, 4, 0xFF0000FF);
+		Renderer::drawRect(0, 0, (int)entry->component->getSize().x(), (int)entry->component->getSize().y(), 0x0000AA22);
 	}
 }
 
-void ComponentListComponent::onOffsetChanged()
+void ComponentListComponent::textInput(const char* text)
+{
+	if(getSelectedComponent() != NULL)
+		getSelectedComponent()->textInput(text);
+}
+
+void ComponentListComponent::onPositionChanged()
 {
 	updateComponentOffsets();
 }
@@ -315,5 +429,14 @@ GuiComponent* ComponentListComponent::getSelectedComponent()
 {
 	if(!cursorValid())
 		return NULL;
-	return getCell(mCursor.x, mCursor.y)->component;
+	return getCell(mCursor.x(), mCursor.y())->component;
+}
+
+void ComponentListComponent::onCursorMoved(Eigen::Vector2i from, Eigen::Vector2i to)
+{
+	if(from != Eigen::Vector2i(-1, -1))
+		getCell(from.x(), from.y())->component->onFocusLost();
+
+	if(to != Eigen::Vector2i(-1, -1))
+		getCell(to.x(), to.y())->component->onFocusGained();
 }

@@ -41,7 +41,7 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 
 		std::string image = data->getImage();
 		ImageComponent* img = NULL;
-
+		
 		if( image.compare("none") != 0 )
 			img = new ImageComponent(window, Renderer::getScreenWidth()/2 + Renderer::getScreenWidth()/2 * i, Renderer::getScreenHeight() / 2, image, 0, (unsigned int)(Renderer::getScreenHeight()/2.5), true);
 		else
@@ -73,17 +73,17 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 
 	tName = new TextComponent(window);
 	tName->setColor(0xFFFFFFFF);
-	tName->setOffset(10, 10);
+	tName->setPosition(10, 10);
 	tName->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
 	tManufacturer = new TextComponent(window);
 	tManufacturer->setColor(0xFFFFFFFF);
-	tManufacturer->setOffset(10, 60);
+	tManufacturer->setPosition(10, 60);
 	tManufacturer->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
 	tDate = new TextComponent(window);
 	tDate->setColor(0xFFFFFFFF);
-	tDate->setOffset(10, 110);
+	tDate->setPosition(10, 110);
 	tDate->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
 	text->addChild(tName);
@@ -97,7 +97,7 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 void GuiConsoleList::update(int deltaTime)
 {
 	GuiComponent::update(deltaTime);
-
+	
 	sliderAnimator->update(deltaTime);
 
 	textAnimator->update(deltaTime);
@@ -158,11 +158,11 @@ bool GuiConsoleList::goToNext()
 		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS,
 			[this] ()
 		{
-			//animate logo
-			setLogo(true);
+		//animate logo
+		setLogo(true);
 
-			//animate text
-			setText(true);
+		//animate text
+		setText(true);
 
 			//resize current console
 			setImages(true);
@@ -192,12 +192,12 @@ bool GuiConsoleList::goToPrev()
 		sliderAnimator->move(Renderer::getScreenWidth() / 2, 0, ANIMATION_MILLIS,
 			[this] ()
 		{
-			//animate logo
-			setLogo(true);
+		//animate logo
+		setLogo(true);
+		
+		//animate text
+		setText(true);
 
-			//animate text
-			setText(true);
-			
 			//resize current console
 			setImages(true);
 		});
@@ -213,8 +213,8 @@ bool GuiConsoleList::setCurrentIndex(unsigned int index)
 	if(mCurrentIndex != index && index >= 0 && index < SystemData::sSystemVector.size())
 	{
 		mCurrentIndex = index;
-		slider->setOffset(-(Renderer::getScreenWidth() / 2 * index), this->getOffset().y);
-
+		slider->setPosition(-(Renderer::getScreenWidth() / 2 * index), this->getPosition().y());
+		
 		setLogo(false);
 
 		setText(false);
@@ -236,16 +236,16 @@ void GuiConsoleList::setText(bool animate)
 	tManufacturer->setText( "Manufacturer: " + SystemData::sSystemVector.at(mCurrentIndex)->getManufacturer());
 	tDate->setText( "Release date: " + SystemData::sSystemVector.at(mCurrentIndex)->getRelaseDate());
 
-	int maxW = SDL_max( SDL_max(tName->getSize().x, tManufacturer->getSize().x), tDate->getSize().x);
+	int maxW = SDL_max( SDL_max(tName->getSize().x(), tManufacturer->getSize().x()), tDate->getSize().x());
 
 	text->setSize(maxW + 10, 200); //10 is the internal text left margin
 
 	if(animate)
 	{
 		hideHUD();
-		textAnimator->move(text->getSize().x, 0, ANIMATION_MILLIS*2);
+		textAnimator->move(text->getSize().x(), 0, ANIMATION_MILLIS*2);
 	} else {
-		text->setOffset(0,0);
+		text->setPosition(0,0);
 	}
 }
 
@@ -256,13 +256,13 @@ void GuiConsoleList::setLogo(bool animate)
 
 	logo->setImage(SystemData::sSystemVector.at(mCurrentIndex)->getLogo()); //TODO DYNAMIC
 	logo->setResize(Renderer::getScreenWidth() /2, 0, true);
-
+	
 	if(animate)
 	{
 		hideHUD();
 		logoAnimator->move(0, -(Renderer::getScreenHeight()/4), ANIMATION_MILLIS/4);
 	} else {
-		logo->setOffset(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
+		logo->setPosition(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
 	}
 }
 
@@ -285,6 +285,6 @@ void GuiConsoleList::setImages(bool animate)
 
 void GuiConsoleList::hideHUD()
 {
-	text->setOffset(- text->getSize().x, 0);
-	logo->setOffset(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight());
+	text->setPosition(- text->getSize().x(), 0);
+	logo->setPosition(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight());
 }

@@ -19,7 +19,7 @@ struct GuiBoxData
 class GuiBox : public GuiComponent
 {
 public:
-	GuiBox(Window* window, int offsetX, int offsetY, unsigned int width, unsigned int height);
+	GuiBox(Window* window, float offsetX, float offsetY, float width, float height);
 
 	void setData(GuiBoxData data);
 
@@ -30,17 +30,17 @@ public:
 
 	bool hasBackground();
 
-	void init();
-	void deinit();
+	void setBackgroundColor(unsigned int color);
+	void setBorderColor(unsigned int color);
 
-protected:
-	void onRender();
+	void render(const Eigen::Affine3f& parentTrans) override;
 
+	void onSizeChanged() override;
 private:
 	ImageComponent mBackgroundImage, mHorizontalImage, mVerticalImage, mCornerImage;
 
-	int getHorizontalBorderWidth();
-	int getVerticalBorderWidth();
+	float getHorizontalBorderWidth();
+	float getVerticalBorderWidth();
 };
 
 #endif

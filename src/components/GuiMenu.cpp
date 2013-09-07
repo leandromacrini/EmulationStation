@@ -12,7 +12,7 @@ GuiMenu::GuiMenu(Window* window, GuiGameList* parent) : GuiComponent(window)
 	mParent = parent;
 
 	std::shared_ptr<Font> font = Font::get(*mWindow->getResourceManager(), Font::getDefaultPath(), FONT_SIZE_LARGE);
-	mList = new TextListComponent<std::string>(mWindow, 0, font->getHeight() + 2, font);
+	mList = new TextListComponent<std::string>(mWindow, 0.0f, font->getHeight() + 2.0f, font);
 	mList->setSelectedTextColor(0x0000FFFF);
 	populateList();
 }
@@ -52,7 +52,7 @@ void GuiMenu::executeCommand(std::string command)
 	}else if(command == "es_reload")
 	{
 		//reload the game list
-		SystemData::loadConfig();
+		SystemData::loadConfig(SystemData::getConfigPath(), false);
 		mParent->setSystemId(0);
 	}else if(command == "es_settings")
 	{
@@ -92,8 +92,11 @@ void GuiMenu::update(int deltaTime)
 	mList->update(deltaTime);
 }
 
-void GuiMenu::render()
+void GuiMenu::render(const Eigen::Affine3f& parentTrans)
 {
+	Eigen::Affine3f trans = parentTrans;
+	Renderer::setMatrix(trans);
+
 	Renderer::drawRect(Renderer::getScreenWidth() / 4, 0, Renderer::getScreenWidth() / 2, Renderer::getScreenHeight(), 0x999999);
-	mList->render();
+	mList->render(trans);
 }

@@ -3,7 +3,8 @@
 #include "Log.h"
 #include "Renderer.h"
 
-GuiComponent::GuiComponent(Window* window) : mWindow(window), mParent(NULL), mOpacity(255)
+GuiComponent::GuiComponent(Window* window) : mWindow(window), mParent(NULL), mOpacity(255), 
+	mPosition(Eigen::Vector3f::Zero()), mSize(Eigen::Vector2f::Zero()), mTransform(Eigen::Affine3f::Identity())
 {
 }
 
@@ -37,81 +38,51 @@ void GuiComponent::update(int deltaTime)
 	}
 }
 
-void GuiComponent::render()
+void GuiComponent::render(const Eigen::Affine3f& parentTrans)
 {
-	Renderer::translate(mOffset);
-
-	onRender();
-
-	Renderer::translate(-mOffset);
+	Eigen::Affine3f trans = parentTrans * getTransform();
+	renderChildren(trans);
 }
 
-void GuiComponent::onRender()
+void GuiComponent::renderChildren(const Eigen::Affine3f& transform) const
 {
 	for(unsigned int i = 0; i < getChildCount(); i++)
 	{
-		getChild(i)->render();
+		getChild(i)->render(transform);
 	}
 }
 
-void GuiComponent::init()
+Eigen::Vector3f GuiComponent::getPosition() const
 {
-	for(unsigned int i = 0; i < getChildCount(); i++)
-	{
-		getChild(i)->init();
-	}
+	return mPosition;
 }
 
-void GuiComponent::deinit()
+void GuiComponent::setPosition(const Eigen::Vector3f& offset)
 {
-	for(unsigned int i = 0; i < getChildCount(); i++)
-	{
-		getChild(i)->deinit();
-	}
+	mPosition = offset;
+	onPositionChanged();
 }
 
-//Offset stuff.
-Vector2i GuiComponent::getGlobalOffset()
+void GuiComponent::setPosition(float x, float y, float z)
 {
-	if(mParent)
-		return mParent->getGlobalOffset() + mOffset;
-	else
-		return mOffset;
+	mPosition << x, y, z;
+	onPositionChanged();
 }
 
-Vector2i GuiComponent::getOffset()
-{
-	return mOffset;
-}
-
-void GuiComponent::setOffset(Vector2i offset)
-{
-	setOffset(offset.x, offset.y);
-	onOffsetChanged();
-}
-
-void GuiComponent::setOffset(int x, int y)
-{
-	mOffset.x = x;
-	mOffset.y = y;
-	onOffsetChanged();
-}
-
-Vector2u GuiComponent::getSize()
+Eigen::Vector2f GuiComponent::getSize() const
 {
 	return mSize;
 }
 
-void GuiComponent::setSize(Vector2u size)
+void GuiComponent::setSize(const Eigen::Vector2f& size)
 {
     mSize = size;
     onSizeChanged();
 }
 
-void GuiComponent::setSize(unsigned int w, unsigned int h)
+void GuiComponent::setSize(float w, float h)
 {
-    mSize.x = w;
-    mSize.y = h;
+	mSize << w, h;
     onSizeChanged();
 }
 
@@ -150,12 +121,12 @@ void GuiComponent::clearChildren()
 	mChildren.clear();
 }
 
-unsigned int GuiComponent::getChildCount()
+unsigned int GuiComponent::getChildCount() const
 {
 	return mChildren.size();
 }
 
-GuiComponent* GuiComponent::getChild(unsigned int i)
+GuiComponent* GuiComponent::getChild(unsigned int i) const
 {
 	return mChildren.at(i);
 }
@@ -165,13 +136,12 @@ void GuiComponent::setParent(GuiComponent* parent)
 	mParent = parent;
 }
 
-GuiComponent* GuiComponent::getParent()
+GuiComponent* GuiComponent::getParent() const
 {
 	return mParent;
 }
 
-
-unsigned char GuiComponent::getOpacity()
+unsigned char GuiComponent::getOpacity() const
 {
 	return mOpacity;
 }
@@ -179,4 +149,28 @@ unsigned char GuiComponent::getOpacity()
 void GuiComponent::setOpacity(unsigned char opacity)
 {
 	mOpacity = opacity;
+}
+
+const Eigen::Affine3f GuiComponent::getTransform()
+{
+	mTransform.setIdentity();
+	mTransform.translate(mPosition);
+	return mTransform;
+}
+
+void GuiComponent::setValue(const std::string& value)
+{
+}
+
+std::string GuiComponent::getValue() const
+{
+	return "";
+}
+
+void GuiComponent::textInput(const char* text)
+{
+	for(auto iter = mChildren.begin(); iter != mChildren.end(); iter++)
+	{
+		(*iter)->textInput(text);
+	}
 }

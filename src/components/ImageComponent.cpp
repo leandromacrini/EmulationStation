@@ -6,33 +6,24 @@
 #include "../Renderer.h"
 #include "../Window.h"
 
-Vector2u ImageComponent::getTextureSize() 
+Eigen::Vector2i ImageComponent::getTextureSize() const
 {
 	if(mTexture)
 		return mTexture->getSize();
 	else
-		return Vector2u(0, 0);
+		return Eigen::Vector2i(0, 0);
 }
 
-ImageComponent::ImageComponent(Window* window, int offsetX, int offsetY, std::string path, unsigned int resizeWidth, unsigned int resizeHeight, bool allowUpscale) : GuiComponent(window)
+Eigen::Vector2f ImageComponent::getCenter() const
 {
-	setOffset(Vector2i(offsetX, offsetY));
+	return Eigen::Vector2f(mPosition.x() - (getSize().x() * mOrigin.x()) + getSize().x() / 2, 
+		mPosition.y() - (getSize().y() * mOrigin.y()) + getSize().y() / 2);
+}
 
-	//default origin is the center of image
-	mOrigin.x = 0.5;
-	mOrigin.y = 0.5;
-
-	mOpacity = 255;
-
-	mTiled = false;
-
-	mTargetSize.x = resizeWidth;
-	mTargetSize.y = resizeHeight;
-
-	mAllowUpscale = allowUpscale;
-
-	mFlipX = false;
-	mFlipY = false;
+ImageComponent::ImageComponent(Window* window, float offsetX, float offsetY, std::string path, float targetWidth, float targetHeight, bool allowUpscale) : GuiComponent(window), 
+	mTiled(false), mAllowUpscale(allowUpscale), mFlipX(false), mFlipY(false), mOrigin(0.5, 0.5), mTargetSize(targetWidth, targetHeight), mColorShift(0xFFFFFFFF)
+{
+	setPosition(offsetX, offsetY);
 
 	if(!path.empty())
 		setImage(path);
@@ -47,32 +38,31 @@ void ImageComponent::resize()
 	if(!mTexture)
 		return;
 
-	mSize.x = getTextureSize().x;
-	mSize.y = getTextureSize().y;
-
+	mSize << (float)getTextureSize().x(), (float)getTextureSize().y();
+	
 	//(we don't resize tiled images)
-	if(!mTiled && (mTargetSize.x || mTargetSize.y))
+	if(!mTiled && (mTargetSize.x() || mTargetSize.y()))
 	{
-		Vector2f resizeScale;
+		Eigen::Vector2f resizeScale(Eigen::Vector2f::Zero());
 
-		if(mTargetSize.x && (mAllowUpscale || mSize.x > mTargetSize.x))
+		if(mTargetSize.x() && (mAllowUpscale || mSize.x() > mTargetSize.x()))
 		{
-			resizeScale.x = (float)mTargetSize.x / mSize.x;
+			resizeScale[0] = mTargetSize.x() / mSize.x();
 		}
-		if(mTargetSize.y && (mAllowUpscale || mSize.y > mTargetSize.y))
+		if(mTargetSize.y() && (mAllowUpscale || mSize.y() > mTargetSize.y()))
 		{
-			resizeScale.y = (float)mTargetSize.y / mSize.y;
+			resizeScale[1] = mTargetSize.y() / mSize.y();
 		}
 
-		if(resizeScale.x && !resizeScale.y)
-			resizeScale.y = resizeScale.x;
-		if(resizeScale.y && !resizeScale.x)
-			resizeScale.x = resizeScale.y;
+		if(resizeScale.x() && !resizeScale.y())
+			resizeScale[1] = resizeScale.x();
+		if(resizeScale[1] && !resizeScale.x())
+			resizeScale[0] = resizeScale.y();
 
-		if(resizeScale.x)
-			mSize.x = (int)(mSize.x * resizeScale.x);
-		if(resizeScale.y)
-			mSize.y = (int)(mSize.y * resizeScale.y);
+		if(resizeScale.x())
+			mSize[0] = (mSize.x() * resizeScale.x());
+		if(resizeScale.y())
+			mSize[1] = (mSize.y() * resizeScale.y());
 	}
 
 	if(mTiled)
@@ -81,9 +71,6 @@ void ImageComponent::resize()
 
 void ImageComponent::setImage(std::string path)
 {
-	if(mPath == path)
-		return;
-
 	mPath = path;
 
 	if(mPath.empty() || !mWindow->getResourceManager()->fileExists(mPath))
@@ -96,8 +83,7 @@ void ImageComponent::setImage(std::string path)
 
 void ImageComponent::setOrigin(float originX, float originY)
 {
-	mOrigin.x = originX;
-	mOrigin.y = originY;
+	mOrigin << originX, originY;
 }
 
 void ImageComponent::setTiling(bool tile)
@@ -110,10 +96,9 @@ void ImageComponent::setTiling(bool tile)
 	resize();
 }
 
-void ImageComponent::setResize(unsigned int width, unsigned int height, bool allowUpscale)
+void ImageComponent::setResize(float width, float height, bool allowUpscale)
 {
-	mTargetSize.x = width;
-	mTargetSize.y = height;
+	mTargetSize << width, height;
 	mAllowUpscale = allowUpscale;
 	resize();
 }
@@ -128,8 +113,16 @@ void ImageComponent::setFlipY(bool flip)
 	mFlipY = flip;
 }
 
-void ImageComponent::onRender()
+void ImageComponent::setColorShift(unsigned int color)
 {
+	mColorShift = color;
+}
+
+void ImageComponent::render(const Eigen::Affine3f& parentTrans)
+{
+	Eigen::Affine3f trans = parentTrans * getTransform();
+	Renderer::setMatrix(trans);
+	
 	if(mTexture && getOpacity() > 0)
 	{
 		GLfloat points[12], texs[12];
@@ -137,31 +130,31 @@ void ImageComponent::onRender()
 
 		if(mTiled)
 		{
-			float xCount = (float)mSize.x / getTextureSize().x;
-			float yCount = (float)mSize.y / getTextureSize().y;
+			float xCount = mSize.x() / getTextureSize().x();
+			float yCount = mSize.y() / getTextureSize().y();
 			
-			Renderer::buildGLColorArray(colors, 0xFFFFFF00 | (getOpacity()), 6);
+			Renderer::buildGLColorArray(colors, (mColorShift >> 8 << 8)| (getOpacity()), 6);
 			buildImageArray(0, 0, points, texs, xCount, yCount);
 		}else{
-			Renderer::buildGLColorArray(colors, 0xFFFFFF00 | (getOpacity()), 6);
+			Renderer::buildGLColorArray(colors, (mColorShift >> 8 << 8) | (getOpacity()), 6);
 			buildImageArray(0, 0, points, texs);
 		}
 
 		drawImageArray(points, texs, colors, 6);
 	}
 
-	GuiComponent::onRender();
+	GuiComponent::renderChildren(trans);
 }
 
 void ImageComponent::buildImageArray(int posX, int posY, GLfloat* points, GLfloat* texs, float px, float py)
 {
-	points[0] = posX - (mSize.x * mOrigin.x);		points[1] = posY - (mSize.y * mOrigin.y);
-	points[2] = posX - (mSize.x * mOrigin.x);		points[3] = posY + (mSize.y * (1 - mOrigin.y));
-	points[4] = posX + (mSize.x * (1 - mOrigin.x));		points[5] = posY - (mSize.y * mOrigin.y);
+	points[0] = posX - (mSize.x() * mOrigin.x());		points[1] = posY - (mSize.y() * mOrigin.y());
+	points[2] = posX - (mSize.x() * mOrigin.x());		points[3] = posY + (mSize.y() * (1 - mOrigin.y()));
+	points[4] = posX + (mSize.x() * (1 - mOrigin.x()));		points[5] = posY - (mSize.y() * mOrigin.y());
 
-	points[6] = posX + (mSize.x * (1 - mOrigin.x));		points[7] = posY - (mSize.y * mOrigin.y);
-	points[8] = posX - (mSize.x * mOrigin.x);		points[9] = posY + (mSize.y * (1 - mOrigin.y));
-	points[10] = posX + (mSize.x * (1 -mOrigin.x));		points[11] = posY + (mSize.y * (1 - mOrigin.y));
+	points[6] = posX + (mSize.x() * (1 - mOrigin.x()));		points[7] = posY - (mSize.y() * mOrigin.y());
+	points[8] = posX - (mSize.x() * mOrigin.x());		points[9] = posY + (mSize.y() * (1 - mOrigin.y()));
+	points[10] = posX + (mSize.x() * (1 -mOrigin.x()));		points[11] = posY + (mSize.y() * (1 - mOrigin.y()));
 
 
 

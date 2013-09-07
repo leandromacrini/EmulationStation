@@ -29,10 +29,7 @@ public:
 
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
-	void render();
-
-	void init();
-	void deinit();
+	void render(const Eigen::Affine3f& parentTrans) override;
 
 	void updateDetailData();
 
@@ -45,16 +42,16 @@ public:
 	static GuiGameList* create(Window* window);
 
 	bool isDetailed() const;
+	ThemeComponent* getTheme();
+
 	void doTransition(int dir);
 	void doVerticalTransition(int dir);
-	ThemeComponent* getTheme();
 
 	static const float sInfoWidth;
 private:
 	void updateList();
 	void updateTheme();
 	void clearDetailData();
-	
 
 	std::string getThemeFile();
 
@@ -69,11 +66,21 @@ private:
 	ScrollableContainer mDescContainer;
 	AnimationComponent mImageAnimation;
 	ThemeComponent* mTheme;
+	TextComponent mHeaderText;
 
 	ImageComponent mTransitionImage;
 	AnimationComponent mTransitionAnimation;
 
-	Vector2i getImagePos();
+	Eigen::Vector3f getImagePos();
+
+	bool mLockInput;
+	
+	void (GuiGameList::*mEffectFunc)(int);
+	int mEffectTime;
+	int mGameLaunchEffectLength;
+
+	void updateGameLaunchEffect(int t);
+	void updateGameReturnEffect(int t);
 };
 
 #endif

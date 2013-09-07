@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <string>
-#include "Vector2.h"
 #include "platform.h"
+#include <Eigen/Dense>
 #include GLHEADER
 //#include "Font.h"
 
@@ -12,13 +12,14 @@ class GuiComponent;
 class Font;
 
 //The Renderer provides several higher-level functions for drawing (rectangles, text, etc.).
-//Defined in multiple files - Renderer.cpp has the GuiComponent stuff, Renderer_draw_* includes renderer-specific drawing implementations, and Renderer_init_* includes renderer-specific init/deinit.
+//Renderer_draw_gl.cpp has most of the higher-level functions and wrappers.
+//Renderer_init_*.cpp has platform-specific renderer initialziation/deinitialziation code.  (e.g. the Raspberry Pi sets up dispmanx/OpenGL ES)
 namespace Renderer
 {
 	bool init(int w, int h);
 	void deinit();
 
-	//just takes care of default font init/deinit right now
+	//doesn't do anything right now
 	void onInit();
 	void onDeinit();
 
@@ -30,12 +31,11 @@ namespace Renderer
 	//graphics commands
 	void swapBuffers();
 
-	void translatef(float x, float y);
-	void translate(Vector2i offset);
-	
-	void pushClipRect(int x, int y, unsigned int w, unsigned int h);
-	void pushClipRect(Vector2i offset, Vector2u size);
+	void pushClipRect(Eigen::Vector2i pos, Eigen::Vector2i dim);
 	void popClipRect();
+
+	void setMatrix(float* mat);
+	void setMatrix(const Eigen::Affine3f& transform);
 
 	void drawRect(int x, int y, int w, int h, unsigned int color);
 }

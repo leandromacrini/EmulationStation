@@ -1,7 +1,7 @@
 #include "Sound.h"
 #include "AudioManager.h"
 #include "Log.h"
-
+#include "Settings.h"
 
 Sound::Sound(const std::string & path) : mSampleData(NULL), mSamplePos(0), mSampleLength(0), playing(false)
 {
@@ -82,6 +82,9 @@ void Sound::play()
 	if(mSampleData == NULL)
 		return;
 
+	if(Settings::getInstance()->getBool("DISABLESOUNDS"))
+		return;
+
 	SDL_LockAudio();
 	if (playing)
 	{
@@ -136,4 +139,11 @@ void Sound::setPosition(Uint32 newPosition)
 Uint32 Sound::getLength() const
 {
 	return mSampleLength;
+}
+
+Uint32 Sound::getLengthMS() const
+{
+	//44100 samples per second, 2 channels (stereo)
+	//I have no idea why the *0.75 is necessary, but otherwise it's inaccurate
+	return (Uint32)((mSampleLength / 44100.0f / 2.0f * 0.75f) * 1000);
 }

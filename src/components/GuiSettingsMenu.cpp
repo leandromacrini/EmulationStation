@@ -4,40 +4,66 @@
 #include "../VolumeControl.h"
 
 GuiSettingsMenu::GuiSettingsMenu(Window* window) : GuiComponent(window), 
-	mList(window, Vector2u(2, 3)), 
+	mList(window, Eigen::Vector2i(2, 4)), 
+	mBox(mWindow, 0, 0, 0, 0),
 	mDrawFramerateSwitch(window),
 	mVolumeSlider(window, 0, 100, 1),
+	mDisableSoundsSwitch(window, false),
 	mSaveLabel(window)
 {
 	loadStates();
 
+	addChild(&mBox);
 	addChild(&mList);
 
-	mList.setOffset(Renderer::getScreenWidth() / 4, 0);
+	mList.setPosition(Renderer::getScreenWidth() / 4.0f, 0);
+
+	using namespace Eigen;
 
 	TextComponent* label = new TextComponent(mWindow);
 	label->setText("Draw Framerate: ");
 	label->setColor(0x0000FFFF);
-	mList.setEntry(Vector2u(0, 0), Vector2u(1, 1), label, false, ComponentListComponent::AlignRight, Vector2<bool>(true, true));
+	mList.setEntry(Vector2i(0, 0), Vector2i(1, 1), label, false, ComponentListComponent::AlignRight, Matrix<bool, 1, 2>(true, true));
 	mLabels.push_back(label);
 
 	//drawFramerate switch
-	mList.setEntry(Vector2u(1, 0), Vector2u(1, 1), &mDrawFramerateSwitch, true, ComponentListComponent::AlignCenter, Vector2<bool>(true, true));
+	mList.setEntry(Vector2i(1, 0), Vector2i(1, 1), &mDrawFramerateSwitch, true, ComponentListComponent::AlignCenter, Matrix<bool, 1, 2>(true, true));
 
+	//volume label
 	label = new TextComponent(mWindow);
 	label->setText("System volume: ");
 	label->setColor(0x0000FFFF);
-	mList.setEntry(Vector2u(0, 1), Vector2u(1, 1), label, false, ComponentListComponent::AlignRight, Vector2<bool>(true, true));
+	mLabels.push_back(label);
+	mList.setEntry(Vector2i(0, 1), Vector2i(1, 1), label, false, ComponentListComponent::AlignRight, Matrix<bool, 1, 2>(true, true));
 
 	//volume slider
-	mList.setEntry(Vector2u(1, 1), Vector2u(1, 1), &mVolumeSlider, true, ComponentListComponent::AlignCenter, Vector2<bool>(true, true));
+	mList.setEntry(Vector2i(1, 1), Vector2i(1, 1), &mVolumeSlider, true, ComponentListComponent::AlignCenter, Matrix<bool, 1, 2>(true, true));
+
+	//disable sounds
+	label = new TextComponent(mWindow);
+	label->setText("Disable sounds: ");
+	label->setColor(0x0000FFFF);
+	mLabels.push_back(label);
+	mList.setEntry(Vector2i(0, 2), Vector2i(1, 1), label, false, ComponentListComponent::AlignRight, Matrix<bool, 1, 2>(true, true));
+
+	mList.setEntry(Vector2i(1, 2), Vector2i(1, 1), &mDisableSoundsSwitch, true, ComponentListComponent::AlignCenter, Matrix<bool, 1, 2>(true, true));
+
 
 	//save label
 	mSaveLabel.setText("SAVE");
 	mSaveLabel.setColor(0x000000FF);
-	mList.setEntry(Vector2u(0, 2), Vector2u(2, 1), &mSaveLabel, true, ComponentListComponent::AlignCenter, Vector2<bool>(false, true));
+	mList.setEntry(Vector2i(0, 3), Vector2i(2, 1), &mSaveLabel, true, ComponentListComponent::AlignCenter, Matrix<bool, 1, 2>(false, true));
 
-	mList.setOffset(Renderer::getScreenWidth() / 2 - mList.getSize().x / 2, 0);
+	//center list
+	mList.setPosition(Renderer::getScreenWidth() / 2 - mList.getSize().x() / 2, Renderer::getScreenHeight() / 2 - mList.getSize().y() / 2);
+
+	//set up borders/background
+	mBox.setPosition(mList.getPosition());
+	mBox.setSize(mList.getSize());
+	mBox.setCornerImage(":/corner.png");
+	mBox.setVerticalImage(":/bar.png");
+	mBox.setHorizontalImage(":/bar.png");
+	mBox.setBorderColor(0x333333FF);
 }
 
 GuiSettingsMenu::~GuiSettingsMenu()
@@ -76,6 +102,8 @@ void GuiSettingsMenu::loadStates()
 	mDrawFramerateSwitch.setState(s->getBool("DRAWFRAMERATE"));
 
 	mVolumeSlider.setValue((float)VolumeControl::getInstance()->getVolume());
+
+	mDisableSoundsSwitch.setState(s->getBool("DISABLESOUNDS"));
 }
 
 void GuiSettingsMenu::applyStates()
@@ -84,6 +112,8 @@ void GuiSettingsMenu::applyStates()
 	s->setBool("DRAWFRAMERATE", mDrawFramerateSwitch.getState());
 
 	VolumeControl::getInstance()->setVolume((int)mVolumeSlider.getValue());
+
+	s->setBool("DISABLESOUNDS", mDisableSoundsSwitch.getState());
 
 	s->saveFile();
 }

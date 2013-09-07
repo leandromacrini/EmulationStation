@@ -11,7 +11,7 @@ class GameData;
 class SystemData
 {
 public:
-	SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image, std::string logo, std::string relaseDate, std::string manufacturer, std::string platformId);
+	SystemData(const std::string& name, const std::string& descName, const std::string& startPath, const std::string& extension, const std::string& command, const std::string& image, const std::string& logo, const std::string& relaseDate, const std::string& manufacturer);
 	~SystemData();
 
 	FolderData* getRootFolder();
@@ -24,15 +24,14 @@ public:
 	std::string getLogo();
 	std::string getRelaseDate();
 	std::string getManufacturer();
-	std::string getPlatformId();
 	
 	bool hasGamelist();
 
 	void launchGame(Window* window, GameData* game);
 
 	static void deleteSystems();
-	static void loadConfig();
-	static void writeExampleConfig();
+	static bool loadConfig(const std::string& path, bool writeExampleIfNonexistant = true); //Load the system config file at getConfigPath(). Returns true if no errors were encountered. An example can be written if the file doesn't exist.
+	static void writeExampleConfig(const std::string& path);
 	static std::string getConfigPath();
 	static std::string getBlankConsoleImagePath();
 
@@ -46,7 +45,6 @@ private:
 	std::string mImage;
 	std::string mRelaseDate;
 	std::string mManufacturer;
-	std::string mPlatformId;
 	std::string mLogo;
 
 	void populateFolder(FolderData* folder);

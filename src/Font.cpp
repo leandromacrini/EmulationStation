@@ -12,12 +12,17 @@ bool Font::libraryInitialized = false;
 int Font::getDpiX() { return 96; }
 int Font::getDpiY() { return 96; }
 
-int Font::getSize() { return mSize; }
+int Font::getSize() const { return mSize; }
 
 std::map< std::pair<std::string, int>, std::weak_ptr<Font> > Font::sFontMap;
 
+static std::string default_font_path = "";
+
 std::string Font::getDefaultPath()
 {
+	if(!default_font_path.empty())
+		return default_font_path;
+
 	const int fontCount = 4;
 
 #ifdef WIN32
@@ -53,10 +58,13 @@ std::string Font::getDefaultPath()
 	for(int i = 0; i < fontCount; i++)
 	{
 		if(boost::filesystem::exists(fonts[i]))
+		{
+			default_font_path = fonts[i];
 			return fonts[i];
+		}
 	}
 
-	LOG(LogError) << "Error - could not find a font!";
+	LOG(LogError) << "Error - could not find the default font!";
 
 	return "";
 }
@@ -126,7 +134,10 @@ void Font::init(ResourceData data)
 void Font::deinit()
 {
 	if(textureID)
+	{
 		glDeleteTextures(1, &textureID);
+		textureID = 0;
+	}
 }
 
 void Font::buildAtlas(ResourceData data)
@@ -168,8 +179,11 @@ void Font::buildAtlas(ResourceData data)
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -235,21 +249,19 @@ void Font::buildAtlas(ResourceData data)
 	if((y + maxHeight) >= textureHeight)
 	{
 		//failed to create a proper font texture
-		LOG(LogWarning) << "Font with size " << mSize << " exceeded max texture size! Trying again...";
+		LOG(LogWarning) << "Font \"" << mPath << "\" with size " << mSize << " exceeded max texture size! Trying again...";
 		//try a 3/4th smaller size and redo initialization
 		fontScale *= 1.25f;
 		mSize = (int)(mSize * (1.0f / fontScale));
 		deinit();
 		init(data);
-	}else{
-		LOG(LogInfo) << "Created font with size " << mSize << ".";
 	}
 }
 
 
-void Font::drawText(std::string text, int startx, int starty, int color)
+void Font::drawText(std::string text, const Eigen::Vector2f& offset, unsigned int color)
 {
-	TextCache* cache = buildTextCache(text, startx, starty, color);
+	TextCache* cache = buildTextCache(text, offset[0], offset[1], color);
 	renderTextCache(cache);
 	delete cache;
 }
@@ -265,12 +277,6 @@ void Font::renderTextCache(TextCache* cache)
 	if(cache == NULL)
 	{
 		LOG(LogError) << "Attempted to draw NULL TextCache!";
-		return;
-	}
-
-	if(cache->sourceFont != this)
-	{
-		LOG(LogError) << "Attempted to draw TextCache with font other than its source!";
 		return;
 	}
 
@@ -297,117 +303,73 @@ void Font::renderTextCache(TextCache* cache)
 	glDisable(GL_BLEND);
 }
 
-void Font::sizeText(std::string text, int* w, int* h)
+Eigen::Vector2f Font::sizeText(std::string text) const
 {
-	float cwidth = 0.0f;
+	float lineWidth = 0.0f;
+	float highestWidth = 0.0f;
+
+	float y = (float)getHeight();
+
 	for(unsigned int i = 0; i < text.length(); i++)
 	{
 		unsigned char letter = text[i];
+
+		if(letter == '\n')
+		{
+			if(lineWidth > highestWidth)
+				highestWidth = lineWidth;
+
+			lineWidth = 0.0f;
+			y += getHeight();
+		}
+
 		if(letter < 32 || letter >= 128)
 			letter = 127;
 
-		cwidth += charData[letter].advX * fontScale;
+		lineWidth += charData[letter].advX * fontScale;
 	}
 
-	if(w != NULL)
-		*w = (int)cwidth;
+	if(lineWidth > highestWidth)
+		highestWidth = lineWidth;
 
-	if(h != NULL)
-		*h = getHeight();
+	return Eigen::Vector2f(highestWidth, y);
 }
 
-int Font::getHeight()
+int Font::getHeight() const
 {
 	return (int)(mMaxGlyphHeight * 1.5f * fontScale);
 }
 
 
-
-
-void Font::drawCenteredText(std::string text, int xOffset, int y, unsigned int color)
+void Font::drawCenteredText(std::string text, float xOffset, float y, unsigned int color)
 {
-	int w, h;
-	sizeText(text, &w, &h);
+	Eigen::Vector2f pos = sizeText(text);
+	
+	pos[0] = (Renderer::getScreenWidth() - pos.x());
+	pos[0] = (pos.x() / 2) + (xOffset / 2);
+	pos[1] = y;
 
-	int x = Renderer::getScreenWidth() - w;
-	x = x / 2;
-	x += xOffset / 2;
-
-	drawText(text, x, y, color);
+	drawText(text, pos, color);
 }
 
 //this could probably be optimized
 //draws text and ensures it's never longer than xLen
-void Font::drawWrappedText(std::string text, int xStart, int yStart, int xLen, unsigned int color)
+void Font::drawWrappedText(std::string text, const Eigen::Vector2f& offset, float xLen, unsigned int color)
 {
-	int y = yStart;
-
-	std::string line, word, temp;
-	int w, h;
-	size_t space, newline;
-
-	while(text.length() > 0 || !line.empty()) //while there's text or we still have text to render
-	{
-		space = text.find(' ', 0);
-		if(space == std::string::npos)
-			space = text.length() - 1;
-
-
-		word = text.substr(0, space + 1);
-
-		//check if the next word contains a newline
-		newline = word.find('\n', 0);
-		if(newline != std::string::npos)
-		{
-			word = word.substr(0, newline);
-			text.erase(0, newline + 1);
-		}else{
-			text.erase(0, space + 1);
-		}
-
-		temp = line + word;
-
-		sizeText(temp, &w, &h);
-
-		//if we're on the last word and it'll fit on the line, just add it to the line
-		if((w <= xLen && text.length() == 0) || newline != std::string::npos)
-		{
-			line = temp;
-			word = "";
-		}
-
-
-		//if the next line will be too long or we're on the last of the text, render it
-		if(w > xLen || text.length() == 0 || newline != std::string::npos)
-		{
-			//render line now
-			if(w > 0) //make sure it's not blank
-				drawText(line, xStart, y, color);
-
-			//increment y by height and some extra padding for the next line
-			y += h + 4;
-
-			//move the word we skipped to the next line
-			line = word;
-		}else{
-			//there's still space, continue building the line
-			line = temp;
-		}
-
-	}
+	text = wrapText(text, xLen);
+	drawText(text, offset, color);
 }
 
-void Font::sizeWrappedText(std::string text, int xLen, int* xOut, int* yOut)
+//the worst algorithm ever written
+//breaks up a normal string with newlines to make it fit xLen
+std::string Font::wrapText(std::string text, float xLen) const
 {
-	//this is incorrect for text that is so short it doesn't need to wrap
-	if(xOut != NULL)
-		*xOut = xLen;
-
-	int y = 0;
+	std::string out;
 
 	std::string line, word, temp;
-	int w, h;
 	size_t space, newline;
+
+	Eigen::Vector2f textSize;
 
 	while(text.length() > 0 || !line.empty()) //while there's text or we still have text to render
 	{
@@ -429,20 +391,21 @@ void Font::sizeWrappedText(std::string text, int xLen, int* xOut, int* yOut)
 
 		temp = line + word;
 
-		sizeText(temp, &w, &h);
+		textSize = sizeText(temp);
 
 		//if we're on the last word and it'll fit on the line, just add it to the line
-		if((w <= xLen && text.length() == 0) || newline != std::string::npos)
+		if((textSize.x() <= xLen && text.length() == 0) || newline != std::string::npos)
 		{
 			line = temp;
 			word = "";
 		}
 
 		//if the next line will be too long or we're on the last of the text, render it
-		if(w > xLen || text.length() == 0 || newline != std::string::npos)
+		if(textSize.x() > xLen || text.length() == 0 || newline != std::string::npos)
 		{
-			//increment y by height and some extra padding for the next line
-			y += h + 4;
+			//output line now
+			if(textSize.x() > 0) //make sure it's not blank
+				out += line + '\n';
 
 			//move the word we skipped to the next line
 			line = word;
@@ -450,21 +413,25 @@ void Font::sizeWrappedText(std::string text, int xLen, int* xOut, int* yOut)
 			//there's still space, continue building the line
 			line = temp;
 		}
-
 	}
 
-	if(yOut != NULL)
-		*yOut = y;
+	if(!out.empty()) //chop off the last newline
+		out.erase(out.length() - 1, 1);
+
+	return out;
 }
 
-
-
+Eigen::Vector2f Font::sizeWrappedText(std::string text, float xLen) const
+{
+	text = wrapText(text, xLen);
+	return sizeText(text);
+}
 
 //=============================================================================================================
 //TextCache
 //=============================================================================================================
 
-TextCache* Font::buildTextCache(const std::string& text, int offsetX, int offsetY, unsigned int color)
+TextCache* Font::buildTextCache(const std::string& text, float offsetX, float offsetY, unsigned int color)
 {
 	if(!textureID)
 	{
@@ -481,7 +448,7 @@ TextCache* Font::buildTextCache(const std::string& text, int offsetX, int offset
 	float tw = (float)textureWidth;
 	float th = (float)textureHeight;
 
-	float x = (float)offsetX;
+	float x = offsetX;
 	float y = offsetY + mMaxGlyphHeight * 1.1f * fontScale; //padding (another 0.5% is added to the bottom through the sizeText function)
 
 	int charNum = 0;
@@ -489,45 +456,53 @@ TextCache* Font::buildTextCache(const std::string& text, int offsetX, int offset
 	{
 		unsigned char letter = text[charNum];
 
+		if(letter == '\n')
+		{
+			y += (float)getHeight();
+			x = offsetX;
+			continue;
+		}
+
 		if(letter < 32 || letter >= 128)
 			letter = 127; //print [X] if character is not standard ASCII
 
 		//the glyph might not start at the cursor position, but needs to be shifted a bit
 		const float glyphStartX = x + charData[letter].bearingX * fontScale;
 		//order is bottom left, top right, top left
-		vert[i + 0].pos = Vector2<GLfloat>(glyphStartX, y + (charData[letter].texH - charData[letter].bearingY) * fontScale);
-		vert[i + 1].pos = Vector2<GLfloat>(glyphStartX + charData[letter].texW * fontScale, y - charData[letter].bearingY * fontScale);
-		vert[i + 2].pos = Vector2<GLfloat>(glyphStartX, vert[i + 1].pos.y);
+		vert[i + 0].pos << glyphStartX, y + (charData[letter].texH - charData[letter].bearingY) * fontScale;
+		vert[i + 1].pos << glyphStartX + charData[letter].texW * fontScale, y - charData[letter].bearingY * fontScale;
+		vert[i + 2].pos << glyphStartX, vert[i + 1].pos.y();
 
-		Vector2<int> charTexCoord(charData[letter].texX, charData[letter].texY);
-		Vector2<int> charTexSize(charData[letter].texW, charData[letter].texH);
+		Eigen::Vector2i charTexCoord(charData[letter].texX, charData[letter].texY);
+		Eigen::Vector2i charTexSize(charData[letter].texW, charData[letter].texH);
 
-		vert[i + 0].tex = Vector2<GLfloat>(charTexCoord.x / tw, (charTexCoord.y + charTexSize.y) / th);
-		vert[i + 1].tex = Vector2<GLfloat>((charTexCoord.x + charTexSize.x) / tw, charTexCoord.y / th);
-		vert[i + 2].tex = Vector2<GLfloat>(vert[i + 0].tex.x, vert[i + 1].tex.y);
+		vert[i + 0].tex << charTexCoord.x() / tw, (charTexCoord.y() + charTexSize.y()) / th;
+		vert[i + 1].tex << (charTexCoord.x() + charTexSize.x()) / tw, charTexCoord.y() / th;
+		vert[i + 2].tex << vert[i + 0].tex.x(), vert[i + 1].tex.y();
 
 		//next triangle (second half of the quad)
 		vert[i + 3].pos = vert[i + 0].pos;
 		vert[i + 4].pos = vert[i + 1].pos;
-		vert[i + 5].pos.x = vert[i + 1].pos.x;
-		vert[i + 5].pos.y = vert[i + 0].pos.y;
+		vert[i + 5].pos[0] = vert[i + 1].pos.x();
+		vert[i + 5].pos[1] = vert[i + 0].pos.y();
 
 		vert[i + 3].tex = vert[i + 0].tex;
 		vert[i + 4].tex = vert[i + 1].tex;
-		vert[i + 5].tex.x = vert[i + 1].tex.x;
-		vert[i + 5].tex.y = vert[i + 0].tex.y;
+		vert[i + 5].tex[0] = vert[i + 1].tex.x();
+		vert[i + 5].tex[1] = vert[i + 0].tex.y();
 
 		x += charData[letter].advX * fontScale;
 	}
 
-	TextCache* cache = new TextCache(vertCount, vert, colors, this);
+	TextCache::CacheMetrics metrics = { sizeText(text) };
+	TextCache* cache = new TextCache(vertCount, vert, colors, metrics);
 	if(color != 0x00000000)
 		cache->setColor(color);
 
 	return cache;
 }
 
-TextCache::TextCache(int verts, Vertex* v, GLubyte* c, Font* f) : vertCount(verts), verts(v), colors(c), sourceFont(f)
+TextCache::TextCache(int verts, Vertex* v, GLubyte* c, const CacheMetrics& m) : vertCount(verts), verts(v), colors(c), metrics(m)
 {
 }
 

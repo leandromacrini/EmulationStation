@@ -34,8 +34,9 @@ else()
 endif()
 find_package(FreeType REQUIRED)
 find_package(FreeImage REQUIRED)
-find_package(SDL REQUIRED)
+find_package(SDL2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
+find_package(Eigen3 REQUIRED)
 
 #add ALSA for Linux
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -73,13 +74,16 @@ else()
     add_definitions(-DUSE_OPENGL_ES)
 endif()
 
+add_definitions(-DEIGEN_DONT_ALIGN)
+
 #-------------------------------------------------------------------------------
 #add include directories
 set(ES_INCLUDE_DIRS
     ${FREETYPE_INCLUDE_DIRS}
     ${FreeImage_INCLUDE_DIRS}
-    ${SDL_INCLUDE_DIR}
+    ${SDL2_INCLUDE_DIR}
     ${Boost_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
 )
 
 #add ALSA for Linux
@@ -123,26 +127,30 @@ set(ES_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/InputManager.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Log.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/MathExp.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/MetaData.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Settings.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Sound.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemData.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Vector2.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/VolumeControl.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Window.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/XMLReader.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/AnimationComponent.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ButtonComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ComponentListComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ImageComponent.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/NinePatchComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ScrollableContainer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/SliderComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/SwitchComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/TextComponent.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/TextEditComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/TextListComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ThemeComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiBox.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiDetectDevice.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiConsoleList.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiFastSelect.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiConsoleList.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiGameList.h
@@ -167,6 +175,7 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/MathExp.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/MetaData.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer_draw_gl.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Renderer_init.cpp
@@ -177,16 +186,20 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/XMLReader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/AnimationComponent.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ButtonComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ComponentListComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ImageComponent.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/NinePatchComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ScrollableContainer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/SliderComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/SwitchComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/TextComponent.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/TextEditComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/ThemeComponent.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiDetectDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiFastSelect.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiMetaDataEd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiConsoleList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiGameList.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/GuiInputConfig.cpp
@@ -195,9 +208,21 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/pugiXML/pugixml.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/ResourceManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/TextureResource.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/data/logo/ES_logo_16.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/data/logo/ES_logo_32.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/ResourceUtil.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/ES_logo_16_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/ES_logo_32_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/bar_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/corner_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/glow_hor_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/glow_vert_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/glow_off_hor_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/glow_off_vert_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/button_png.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/converted/frame_png.cpp
 )
+
+SOURCE_GROUP(resources FILES ResourceUtil.cpp)
 
 #add open gl specific sources
 if(${GLSystem} MATCHES "Desktop OpenGL")
@@ -235,8 +260,8 @@ set(ES_LIBRARIES
     ${Boost_LIBRARIES}
     ${FREETYPE_LIBRARIES}
     ${FreeImage_LIBRARIES}
-	${SDL_LIBRARY}
-    ${SDLMAIN_LIBRARY}
+	${SDL2_LIBRARY}
+    ${SDL2MAIN_LIBRARY}
 )
 
 #add ALSA for Linux

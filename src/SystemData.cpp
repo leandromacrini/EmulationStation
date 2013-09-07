@@ -20,27 +20,25 @@ namespace fs = boost::filesystem;
 std::string SystemData::getStartPath() { return mStartPath; }
 std::string SystemData::getExtension() { return mSearchExtension; }
 
-SystemData::SystemData(std::string name, std::string descName, std::string startPath, std::string extension, std::string command, std::string image, std::string logo, std::string relaseDate, std::string manufacturer, std::string platformId)
+SystemData::SystemData(const std::string& name, const std::string& descName, const std::string& startPath, const std::string& extension, const std::string& command, const std::string& image, const std::string& logo, const std::string& relaseDate, const std::string& manufacturer)
 {
 	mName = name;
 	mDescName = descName;
-	mImage = image;
+	mStartPath = startPath;
 
+	mImage = image;
 	mRelaseDate = relaseDate;
 	mManufacturer = manufacturer;
-	mPlatformId = platformId;
 	mLogo = logo;
 
 
 	//expand home symbol if the startpath contains ~
-	if(startPath[0] == '~')
+	if(mStartPath[0] == '~')
 	{
-		startPath.erase(0, 1);
-		std::string home = getHomePath();
-		startPath.insert(0, home);
-        }
+		mStartPath.erase(0, 1);
+		mStartPath.insert(0, getHomePath());
+	}
 
-	mStartPath = startPath;
 	mSearchExtension = extension;
 	mLaunchCommand = command;
 
@@ -101,10 +99,11 @@ void SystemData::launchGame(Window* window, GameData* game)
 	window->init();
 	VolumeControl::getInstance()->init();
 	AudioManager::getInstance()->init();
+	window->normalizeNextUpdate();
 
 	//update number of times the game has been launched and the time
-	game->setTimesPlayed(game->getTimesPlayed() + 1);
-	game->setLastPlayed(std::time(nullptr));
+	game->incTimesPlayed();
+	game->lastPlayedNow();
 }
 
 void SystemData::populateFolder(FolderData* folder)
@@ -152,7 +151,7 @@ void SystemData::populateFolder(FolderData* folder)
 			//if it matches, add it
 			if(chkExt == extension)
 			{
-				GameData* newGame = new GameData(this, filePath.generic_string(), filePath.stem().string());
+				GameData* newGame = new GameData(this, filePath.generic_string());
 				folder->pushFileData(newGame);
 				isGame = true;
 				break;
@@ -183,14 +182,127 @@ std::string SystemData::getName()
 	return mName;
 }
 
-std::string SystemData::getImage()
-{
-	return mImage;
-}
-
 std::string SystemData::getDescName()
 {
 	return mDescName;
+}
+
+//creates systems from information located in a config file
+bool SystemData::loadConfig(const std::string& path, bool writeExample)
+{
+	deleteSystems();
+
+	LOG(LogInfo) << "Loading system config file " << path << "...";
+
+	if(!fs::exists(path))
+	{
+		LOG(LogError) << "File does not exist!";
+		
+		if(writeExample)
+			writeExampleConfig(path);
+
+		return false;
+	}
+
+	pugi::xml_document doc;
+	pugi::xml_parse_result res = doc.load_file(path.c_str());
+
+	if(!res)
+	{
+		LOG(LogError) << "Could not parse config file!";
+		LOG(LogError) << res.description();
+		return false;
+	}
+
+	//actually read the file
+	pugi::xml_node systemList = doc.child("systems"); //TODO ("systemList");
+
+	for(pugi::xml_node system = systemList.child("system"); system; system = system.next_sibling("system"))
+	{
+		std::string name, descname, path, ext, cmd, image, logo, releasedate, manufacturer;
+		name = system.child("name").text().get();
+		descname = system.child("descname").text().get();
+		path = system.child("path").text().get();
+		ext = system.child("extension").text().get();
+		cmd = system.child("command").text().get();
+		image = system.child("image").text().get();
+		logo = system.child("logo").text().get();
+		releasedate = system.child("releasedate").text().get();
+		manufacturer = system.child("manufacturer").text().get();
+
+		//validate
+		if(name.empty() || path.empty() || ext.empty() || cmd.empty())
+		{
+			LOG(LogError) << "System \"" << name << "\" is missing name, path, extension, or command!";
+			continue;
+		}
+
+		//convert path to generic directory seperators
+		boost::filesystem::path genericPath(path);
+		path = genericPath.generic_string();
+
+		SystemData* newSys = new SystemData(name, descname, path, ext, cmd, image, logo, releasedate, manufacturer);
+		if(newSys->getRootFolder()->getFileCount() == 0)
+		{
+			LOG(LogWarning) << "System \"" << name << "\" has no games! Ignoring it.";
+			delete newSys;
+		}else{
+			sSystemVector.push_back(newSys);
+		}
+	}
+
+	return true;
+}
+
+void SystemData::writeExampleConfig(const std::string& path)
+{
+	std::ofstream file(path.c_str());
+
+	file << "<!-- This is the EmulationStation Systems configuration file.\n"
+			"All systems must be contained within the <systemList> tag.-->\n"
+			"\n"
+			"<systemList>\n"
+			"	<!-- Here's an example system to get you started. -->\n"
+			"	<system>\n"
+			"\n"
+			"		<!-- A short name, used internally. -->\n"
+			"		<name>NES</name>\n"
+			"\n"
+			"		<!-- A \"pretty\" name, displayed in the header and such. -->\n"
+			"		<fullname>Nintendo Entertainment System</fullname>\n"
+			"\n"
+			"		<!-- The path to start searching for ROMs in. '~' will be expanded to $HOME or $HOMEPATH, depending on platform. -->\n"
+			"		<path>~/roms/nes</path>\n"
+			"\n"
+			"		<!-- A list of extensions to search for, delimited by a space. You MUST include the period! It's also case sensitive. -->\n"
+			"		<extension>.nes .NES</extension>\n"
+			"\n"
+			"		<!-- The shell command executed when a game is selected. A few special tags are replaced if found in a command:\n"
+			"		%ROM% is replaced by a bash-special-character-escaped absolute path to the ROM.\n"
+			"		%BASENAME% is replaced by the \"base\" name of the ROM.  For example, \"/foo/bar.rom\" would have a basename of \"bar\". Useful for MAME.\n"
+			"		%ROM_RAW% is the raw, unescaped path to the ROM. -->\n"
+			"		<command>retroarch -L ~/cores/libretro-fceumm.so %ROM%</command>\n"
+			"\n"
+			"	</system>\n"
+			"</systemList>\n";
+
+	file.close();
+
+	LOG(LogError) << "Example config written!  Go read it at \"" << path << "\"!";
+}
+
+void SystemData::deleteSystems()
+{
+	for(unsigned int i = 0; i < sSystemVector.size(); i++)
+	{
+		delete sSystemVector.at(i);
+	}
+	sSystemVector.clear();
+}
+
+std::string SystemData::getImage()
+{
+	return mImage;
 }
 
 std::string SystemData::getLogo()
@@ -206,117 +318,6 @@ std::string SystemData::getRelaseDate()
 std::string SystemData::getManufacturer()
 {
 	return mManufacturer;
-}
-
-std::string SystemData::getPlatformId()
-{
-	return mPlatformId;
-}
-
-//creates systems from information located in a config file
-void SystemData::loadConfig()
-{
-	deleteSystems();
-
-	std::string path = getConfigPath();
-
-	LOG(LogInfo) << "Loading system config file...";
-
-	if(boost::filesystem::exists(path))
-	{
-		pugi::xml_document doc;
-		pugi::xml_parse_result result = doc.load_file(path.c_str());
-
-		if(!result)
-		{
-			LOG(LogError) << "Could not parse System file!\n   " << result.description();
-			return;
-		}
-
-		pugi::xml_node root = doc.child("systems");
-
-		for(pugi::xml_node node = root.child("system"); node; node = node.next_sibling())
-		{
-			std::string sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage, sysLogo, sysRelaseDate, sysManufacturer, sysPlatformId;
-
-			if(node.child("name")) sysName = node.child("name").text().as_string();
-			if(node.child("descname")) sysDescName = node.child("descname").text().as_string();
-			if(node.child("path")) sysPath = node.child("path").text().as_string();
-			if(node.child("extension")) sysExtension = node.child("extension").text().as_string();
-			if(node.child("command")) sysCommand = node.child("command").text().as_string();
-			if(node.child("image")) sysImage = node.child("image").text().as_string();
-			if(node.child("logo")) sysLogo = node.child("logo").text().as_string();
-			if(node.child("releasedate")) sysRelaseDate = node.child("releasedate").text().as_string();
-			if(node.child("manufacturer")) sysManufacturer = node.child("manufacturer").text().as_string();
-			if(node.child("platformid")) sysPlatformId = node.child("platformid").text().as_string();
-
-			//remove leading "/"
-			if(sysPath[sysPath.length() - 1] == '/') sysPath = sysPath.substr(0, sysPath.length() - 1);
-			
-			//convert path to generic directory seperators
-			boost::filesystem::path genericPath(sysPath);
-			sysPath = genericPath.generic_string();
-
-			//descrition check
-			if(sysDescName.empty()) sysDescName = sysName;
-
-			//we have all data, create SystemData and check games availability
-			SystemData* newSystem = new SystemData(sysName, sysDescName, sysPath, sysExtension, sysCommand, sysImage, sysLogo, sysRelaseDate, sysManufacturer, sysPlatformId);
-			if(newSystem->getRootFolder()->getFileCount() == 0)
-			{
-				LOG(LogWarning) << "System \"" << sysName << "\" has no games! Ignoring it.";
-				delete newSystem;
-			}else{
-				sSystemVector.push_back(newSystem);
-			}
-		}
-	}else{
-		LOG(LogError) << "Error - could not load config file \"" << path << "\"!";
-		return;
-	}
-
-	LOG(LogInfo) << "Finished loading config file - created " << sSystemVector.size() << " systems.";
-	return;
-}
-
-void SystemData::writeExampleConfig()
-{
-	std::string path = getConfigPath();
-
-	std::ofstream file(path.c_str());
-
-	file << "# This is the EmulationStation Systems configuration file." << std::endl;
-	file << "# Lines that begin with a hash (#) are ignored, as are empty lines." << std::endl;
-	file << "# A sample system might look like this:" << std::endl;
-	file << "#NAME=nes" << std::endl;
-	file << "#DESCNAME=Nintendo Entertainment System" << std::endl;
-	file << "#PATH=~/ROMs/nes/" << std::endl;
-	file << "#EXTENSION=.nes .NES" << std::endl;
-	file << "#COMMAND=retroarch -L ~/cores/libretro-fceumm.so %ROM%" << std::endl << std::endl;
-
-	file << "#NAME is a short name used internally (and in alternative paths)." << std::endl;
-	file << "#DESCNAME is a descriptive name to identify the system. It may be displayed in a header." << std::endl;
-	file << "#PATH is the path to start the recursive search for ROMs in. ~ will be expanded into the $HOME variable." << std::endl;
-	file << "#EXTENSION is a list of extensions to search for, separated by spaces. You MUST include the period, and it must be exact - it's case sensitive, and no wildcards." << std::endl;
-	file << "#COMMAND is the shell command to execute when a game is selected. %ROM% will be replaced with the (bash special-character escaped) path to the ROM." << std::endl << std::endl;
-
-	file << "#Now try your own!" << std::endl;
-	file << "NAME=" << std::endl;
-	file << "DESCNAME=" << std::endl;
-	file << "PATH=" << std::endl;
-	file << "EXTENSION=" << std::endl;
-	file << "COMMAND=" << std::endl;
-
-	file.close();
-}
-
-void SystemData::deleteSystems()
-{
-	for(unsigned int i = 0; i < sSystemVector.size(); i++)
-	{
-		delete sSystemVector.at(i);
-	}
-	sSystemVector.clear();
 }
 
 std::string SystemData::getBlankConsoleImagePath()
@@ -337,7 +338,7 @@ std::string SystemData::getConfigPath()
 	std::string home = getHomePath();
 	if(home.empty())
 	{
-		LOG(LogError) << "$HOME environment variable empty or nonexistant!";
+		LOG(LogError) << "Home path environment variable empty or nonexistant!";
 		exit(1);
 		return "";
 	}
