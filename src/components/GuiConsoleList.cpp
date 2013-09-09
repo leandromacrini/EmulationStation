@@ -20,10 +20,15 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 
 	//background
 	ImageComponent* back = new ImageComponent(window);
-	back->setTiling(true);
+	back->setTiling(false);
 	back->setOrigin(0, 0);
-	back->setImage("c:\\retromania\\consoles\\bg_pattern.png");
-	back->setResize(Renderer::getScreenWidth(), Renderer::getScreenHeight(), false);
+#ifdef WIN32
+	back->setImage("c:\\retromania\\consoles\\bg.jpg");
+#else //RASPBERRY PI
+	back->setImage("/home/pi/.emulationstation/consoles/bg.jpg");
+#endif 
+
+	back->setResize(Renderer::getScreenWidth(), Renderer::getScreenHeight(), true);
 	this->addChild(back);
 
 	//consoles slider
@@ -55,8 +60,10 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 	//update slider total size
 	slider->setSize(Renderer::getScreenWidth()/2 * (SystemData::sSystemVector.size()+1) , Renderer::getScreenHeight());
 
-	//create loto e logoAnimator
+	//create logo e logoAnimator
 	logo = new ImageComponent(window);
+	logo->setSize(0.3, 0.2);
+	//logo->setResize(540,180, true);
 	logo->setTiling(false);
 	logo->setOrigin(0.5, 0);
 	this->addChild(logo);
@@ -72,17 +79,17 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 	textAnimator->addChild(text);
 
 	tName = new TextComponent(window);
-	tName->setColor(0xFFFFFFFF);
+	tName->setColor(0x000000FF);
 	tName->setPosition(10, 10);
 	tName->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
 	tManufacturer = new TextComponent(window);
-	tManufacturer->setColor(0xFFFFFFFF);
+	tManufacturer->setColor(0x000000FF);
 	tManufacturer->setPosition(10, 60);
 	tManufacturer->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
 	tDate = new TextComponent(window);
-	tDate->setColor(0xFFFFFFFF);
+	tDate->setColor(0x000000FF);
 	tDate->setPosition(10, 110);
 	tDate->setFont(Font::get(*window->getResourceManager(), getHomePath() + "/.emulationstation/fonts/pixeljosh6.ttf", FONT_SIZE_SMALL));
 
@@ -254,13 +261,12 @@ void GuiConsoleList::setLogo(bool animate)
 	//update, reset and animate logo
 	logoAnimator->reset();
 
-	logo->setImage(SystemData::sSystemVector.at(mCurrentIndex)->getLogo()); //TODO DYNAMIC
-	logo->setResize(Renderer::getScreenWidth() /2, 0, true);
+	logo->setImage(SystemData::sSystemVector.at(mCurrentIndex)->getLogo());
 	
 	if(animate)
 	{
 		hideHUD();
-		logoAnimator->move(0, -(Renderer::getScreenHeight()/4), ANIMATION_MILLIS/4);
+		logoAnimator->move(0, -(Renderer::getScreenHeight()*0.225), ANIMATION_MILLIS/4);
 	} else {
 		logo->setPosition(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
 	}
