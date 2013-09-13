@@ -11,18 +11,18 @@ AnimationComponent::AnimationComponent()
 
 
 
-void AnimationComponent::move(int x, int y, int speed, std::tr1::function<void()> callback)
+void AnimationComponent::move(int x, int y, int speed)//, std::tr1::function<void()> callback)
 {
-	mCallback = callback;
+	//mCallback = callback;
 
 	mMoveX = x;
 	mMoveY = y;
 	mMoveSpeed = speed;
 }
 
-void AnimationComponent::fadeIn(int time, std::tr1::function<void()> callback)
+void AnimationComponent::fadeIn(int time)//, std::tr1::function<void()> callback)
 {
-	mCallback = callback;
+	//mCallback = callback;
 
 	mOpacity = 0;
 	setChildrenOpacity(0);
@@ -30,9 +30,9 @@ void AnimationComponent::fadeIn(int time, std::tr1::function<void()> callback)
 	mFadeRate = time;
 }
 
-void AnimationComponent::fadeOut(int time, std::tr1::function<void()> callback)
+void AnimationComponent::fadeOut(int time)//, std::tr1::function<void()> callback)
 {
-	mCallback = callback;
+	//mCallback = callback;
 
 	mOpacity = 255;
 	setChildrenOpacity(255);
