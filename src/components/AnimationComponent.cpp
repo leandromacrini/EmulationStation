@@ -130,7 +130,7 @@ bool AnimationComponent::isAnimating()
 
 void AnimationComponent::reset()
 {
-	mCallback = nullptr;
+	//mCallback = nullptr;
 
 	mMoveX = 0;
 	mMoveY = 0;
