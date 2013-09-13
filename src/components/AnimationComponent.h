@@ -18,9 +18,9 @@ class AnimationComponent
 public:
 	AnimationComponent();
 
-	void move(int x, int y, int speed);//, std::tr1::function<void()> callback = nullptr);
-	void fadeIn(int time);//, std::tr1::function<void()> callback = nullptr);
-	void fadeOut(int time);//, std::tr1::function<void()> callback = nullptr);
+	void move(int x, int y, int speed, std::tr1::function<void()> callback = []() {});
+	void fadeIn(int time, std::tr1::function<void()> callback = []() {});
+	void fadeOut(int time, std::tr1::function<void()> callback = []() {});
 
 	void update(int deltaTime);
 	void reset();

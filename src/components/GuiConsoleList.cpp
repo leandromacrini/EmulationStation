@@ -158,9 +158,9 @@ bool GuiConsoleList::goToNext()
 		hideHUD();
 
 		//animate slider
-		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS);//,
-		//	[this] ()
-		//{
+		sliderAnimator->move(-(Renderer::getScreenWidth() / 2), 0, ANIMATION_MILLIS,
+			[this] ()
+		{
 		//animate logo
 		setLogo(true);
 
@@ -169,7 +169,7 @@ bool GuiConsoleList::goToNext()
 
 		//resize current console
 		setImages(true);
-		//});
+		});
 
 		return true;
 	}
@@ -192,9 +192,9 @@ bool GuiConsoleList::goToPrev()
 		hideHUD();
 
 		//animate slider
-		sliderAnimator->move(Renderer::getScreenWidth() / 2, 0, ANIMATION_MILLIS);//,
-			//[this] ()
-		//{
+		sliderAnimator->move(Renderer::getScreenWidth() / 2, 0, ANIMATION_MILLIS,
+			[this] ()
+		{
 		//animate logo
 		setLogo(true);
 		
@@ -203,7 +203,7 @@ bool GuiConsoleList::goToPrev()
 
 			//resize current console
 			setImages(true);
-		//});
+		});
 
 		return true;
 	}
