@@ -22,11 +22,7 @@ GuiConsoleList::GuiConsoleList(Window* window, GuiGameList* gameList) : GuiCompo
 	ImageComponent* back = new ImageComponent(window);
 	back->setTiling(false);
 	back->setOrigin(0, 0);
-#ifdef WIN32
-	back->setImage("c:\\retromania\\consoles\\bg.jpg");
-#else //RASPBERRY PI
-	back->setImage("/home/pi/.emulationstation/consoles/bg.jpg");
-#endif 
+	back->setImage(getHomePath() + "/.emulationstation/consoles/bg.jpg");
 
 	back->setResize(Renderer::getScreenWidth(), Renderer::getScreenHeight(), true);
 	this->addChild(back);
@@ -268,7 +264,7 @@ void GuiConsoleList::setLogo(bool animate)
 		hideHUD();
 		logoAnimator->move(0, -(Renderer::getScreenHeight()*0.225), ANIMATION_MILLIS/4);
 	} else {
-		logo->setPosition(Renderer::getScreenWidth() /2, Renderer::getScreenHeight() - Renderer::getScreenHeight()/4 );
+		logo->setPosition(Renderer::getScreenWidth() / 2, Renderer::getScreenHeight() -(Renderer::getScreenHeight()*0.225) );
 	}
 }
 
