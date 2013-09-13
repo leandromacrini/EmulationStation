@@ -157,20 +157,3 @@ const Eigen::Affine3f GuiComponent::getTransform()
 	mTransform.translate(mPosition);
 	return mTransform;
 }
-
-void GuiComponent::setValue(const std::string& value)
-{
-}
-
-std::string GuiComponent::getValue() const
-{
-	return "";
-}
-
-void GuiComponent::textInput(const char* text)
-{
-	for(auto iter = mChildren.begin(); iter != mChildren.end(); iter++)
-	{
-		(*iter)->textInput(text);
-	}
-}

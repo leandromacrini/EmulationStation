@@ -14,9 +14,6 @@ void AudioManager::mixAudio(void *unused, Uint8 *stream, int len)
 {
 	bool stillPlaying = false;
 
-	//initialize the buffer to "silence"
-	SDL_memset(stream, 0, len);
-
 	//iterate through all our samples
 	std::vector<std::shared_ptr<Sound>>::const_iterator soundIt = sSoundVector.cbegin();
 	while (soundIt != sSoundVector.cend())
@@ -43,7 +40,6 @@ void AudioManager::mixAudio(void *unused, Uint8 *stream, int len)
 		//advance to next sound
 		++soundIt;
 	}
-
 	//we have processed all samples. check if some will still be playing
 	if (!stillPlaying) {
 		//no. pause audio till a Sound::play() wakes us up

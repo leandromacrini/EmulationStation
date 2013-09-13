@@ -35,7 +35,6 @@ public:
 
 	void render(const Eigen::Affine3f& parentTrans) override;
 
-	void onSizeChanged() override;
 private:
 	ImageComponent mBackgroundImage, mHorizontalImage, mVerticalImage, mCornerImage;
 

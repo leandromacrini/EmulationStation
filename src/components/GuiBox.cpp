@@ -128,9 +128,3 @@ bool GuiBox::hasBackground()
 {
 	return mBackgroundImage.hasImage();
 }
-
-void GuiBox::onSizeChanged()
-{
-	mHorizontalImage.setResize(mSize.x(), getHorizontalBorderWidth(), true);
-	mVerticalImage.setResize(getVerticalBorderWidth(), mSize.y(), true);
-}

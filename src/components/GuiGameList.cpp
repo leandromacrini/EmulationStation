@@ -6,7 +6,6 @@
 #include <boost/filesystem.hpp>
 #include "../Log.h"
 #include "../Settings.h"
-#include "GuiMetaDataEd.h"
 
 std::vector<FolderData::SortState> GuiGameList::sortStates;
 
@@ -122,25 +121,11 @@ void GuiGameList::render(const Eigen::Affine3f& parentTrans)
 }
 
 bool GuiGameList::input(InputConfig* config, Input input)
-{
+{	
 	if(mLockInput)
 		return false;
 
 	mList.input(config, input);
-
-	if(input.id == SDLK_F3)
-	{
-		GameData* game = dynamic_cast<GameData*>(mList.getSelectedObject());
-		if(game)
-		{
-			FolderData* root = mSystem->getRootFolder();
-			mWindow->pushGui(new GuiMetaDataEd(mWindow, game->metadata(), MetaDataList::getDefaultGameMDD(), game->getBaseName(),
-				[&] { updateDetailData(); }, 
-				[game, root, this] { root->removeFileRecursive(game); updateList(); }
-			));
-		}
-		return true;
-	}
 
 	if(config->isMappedTo("a", input) && mFolder->getFileCount() > 0 && input.value != 0)
 	{
@@ -177,17 +162,17 @@ bool GuiGameList::input(InputConfig* config, Input input)
 		mTheme->getSound("menuBack")->play();
 
 		if(mFolderStack.size())
-		{
-			mFolder = mFolderStack.top();
-			mFolderStack.pop();
-			updateList();
-			updateDetailData();
+	{
+		mFolder = mFolderStack.top();
+		mFolderStack.pop();
+		updateList();
+		updateDetailData();
 		}
 		else
 		{
 			mWindow->removeGui(this);
 		}
-		
+
 		return true;
 	}
 
@@ -379,18 +364,17 @@ void GuiGameList::updateDetailData()
 		//if we've selected a game
 		if(mList.getSelectedObject() && !mList.getSelectedObject()->isFolder())
 		{
-			GameData* game = (GameData*)mList.getSelectedObject();
 			//set image to either "not found" image or metadata image
-			if(game->metadata()->get("image").empty())
+			if(((GameData*)mList.getSelectedObject())->getImagePath().empty())
 				mScreenshot.setImage(mTheme->getString("imageNotFoundPath"));
 			else
-				mScreenshot.setImage(game->metadata()->get("image"));
+				mScreenshot.setImage(((GameData*)mList.getSelectedObject())->getImagePath());
 
 			Eigen::Vector3f imgOffset = Eigen::Vector3f(Renderer::getScreenWidth() * 0.10f, 0, 0);
 			mScreenshot.setPosition(getImagePos() - imgOffset);
 
-			mImageAnimation.fadeIn(500);
-			mImageAnimation.move(imgOffset.x(), imgOffset.y(), 500);
+			mImageAnimation.fadeIn(35);
+			mImageAnimation.move(imgOffset.x(), imgOffset.y(), 20);
 
 			mDescContainer.setPosition(Eigen::Vector3f(Renderer::getScreenWidth() * 0.03f, getImagePos().y() + mScreenshot.getSize().y() + 12, 0));
 			mDescContainer.setSize(Eigen::Vector2f(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03f), Renderer::getScreenHeight() - mDescContainer.getPosition().y()));
@@ -399,7 +383,7 @@ void GuiGameList::updateDetailData()
 
 			mDescription.setPosition(0, 0);
 			mDescription.setSize(Eigen::Vector2f(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03f), 0));
-			mDescription.setText(game->metadata()->get("desc"));
+			mDescription.setText(((GameData*)mList.getSelectedObject())->getDescription());
 		}else{
 			mScreenshot.setImage("");
 			mDescription.setText("");

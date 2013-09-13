@@ -18,20 +18,16 @@ public:
 	};
 
 	//DO NOT USE NEGATIVE NUMBERS FOR POSITION OR SIZE.
-	void setEntry(Eigen::Vector2i pos, Eigen::Vector2i size, GuiComponent* component, bool canFocus, AlignmentType align, 
-		Eigen::Matrix<bool, 1, 2> autoFit = Eigen::Matrix<bool, 1, 2>(true, true), UpdateBehavior updateType = UpdateAlways);
+	void setEntry(Eigen::Vector2i pos, Eigen::Vector2i size, GuiComponent* component, bool canFocus, AlignmentType align, Eigen::Matrix<bool, 1, 2> autoFit, UpdateBehavior updateType = UpdateAlways);
 
 	void onPositionChanged() override;
 
-	void textInput(const char* text) override;
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
 	void render(const Eigen::Affine3f& parentTrans) override;
 
-	void forceColumnWidth(int col, unsigned int size);
-	void forceRowHeight(int row, unsigned int size);
-
-	void updateComponent(GuiComponent* cmp);
+	void setColumnWidth(int col, unsigned int size);
+	void setRowHeight(int row, unsigned int size);
 
 	void resetCursor();
 	bool cursorValid();
@@ -75,18 +71,14 @@ private:
 
 	unsigned int* mColumnWidths;
 	unsigned int* mRowHeights;
-	bool* mColumnWidthForced;
-	bool* mRowHeightForced;
 
 	Eigen::Vector3f getCellOffset(Eigen::Vector2i gridPos);
 	void updateSize();
 
 	void moveCursor(Eigen::Vector2i dir);
-	void onCursorMoved(Eigen::Vector2i from, Eigen::Vector2i to);
 	Eigen::Vector2i mCursor;
 
 	void updateComponentOffsets();
-	void updateCellSize(ComponentEntry* e, bool updWidth = true, bool updHeight = true);
 };
 
 //ability to define a list of components in terms of a grid

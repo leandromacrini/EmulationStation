@@ -60,7 +60,7 @@ void AnimationComponent::update(int deltaTime)
 			mMoveSpeed = 0;
 		}
 		else
-		{	
+		{
 			mMoveX -= deltaX;
 			mMoveY -= deltaY;
 
@@ -74,10 +74,10 @@ void AnimationComponent::update(int deltaTime)
 		}
 
 		moveChildren(deltaX, deltaY);
-	}
+		}
 
-	if(mFadeRate != 0)
-	{
+		if(mFadeRate != 0)
+		{
 		int deltaOpacity = 0;
 		
 		if(mFadeRate < 0)
@@ -93,33 +93,33 @@ void AnimationComponent::update(int deltaTime)
 
 		int opacity = (int)mOpacity + deltaOpacity;
 
-		if(opacity > 255)
-		{
-			mFadeRate = 0;
-			opacity = 255;
+			if(opacity > 255)
+			{
+				mFadeRate = 0;
+				opacity = 255;
 
 			//if we have a callback, call it
 			if(mCallback != NULL) mCallback();
 			
 			reset();
-		}
+			}
 
-		if(opacity < 0)
-		{
-			mFadeRate = 0;
-			opacity = 0;
+			if(opacity < 0)
+			{
+				mFadeRate = 0;
+				opacity = 0;
 
 			//if we have a callback, call it
 			if(mCallback != NULL) mCallback();
 			
 			reset();
 
-		}
+			}
 
-		mOpacity = (unsigned char)opacity;
-		setChildrenOpacity((unsigned char)opacity);
+			mOpacity = (unsigned char)opacity;
+			setChildrenOpacity((unsigned char)opacity);
+		}
 	}
-}
 
 bool AnimationComponent::isAnimating()
 {

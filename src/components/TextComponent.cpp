@@ -20,26 +20,27 @@ TextComponent::TextComponent(Window* window, const std::string& text, std::share
 void TextComponent::onSizeChanged()
 {
 	mAutoCalcExtent << (getSize().x() == 0), (getSize().y() == 0);
-	onTextChanged();
+	calculateExtent();
 }
 
 void TextComponent::setFont(std::shared_ptr<Font> font)
 {
 	mFont = font;
-	onTextChanged();
+
+	calculateExtent();
 }
 
 void TextComponent::setColor(unsigned int color)
 {
 	mColor = color;
 	mOpacity = mColor & 0x000000FF;
-	onTextChanged();
 }
 
 void TextComponent::setText(const std::string& text)
 {
 	mText = text;
-	onTextChanged();
+
+	calculateExtent();
 }
 
 void TextComponent::setCentered(bool center)
@@ -69,13 +70,10 @@ void TextComponent::render(const Eigen::Affine3f& parentTrans)
 		{
 			Eigen::Vector2f textSize = font->sizeWrappedText(mText, getSize().x());
 			Eigen::Vector2f pos((getSize().x() - textSize.x()) / 2, 0);
-
-			Eigen::Affine3f centeredTrans = trans;
-			centeredTrans = centeredTrans.translate(Eigen::Vector3f(pos.x(), pos.y(), 0));
-			Renderer::setMatrix(centeredTrans);
+			font->drawWrappedText(mText, pos, getSize().x(), (mColor >> 8 << 8) | getOpacity());
+		}else{
+			font->drawWrappedText(mText, Eigen::Vector2f(0, 0), getSize().x(), mColor >> 8 << 8  | getOpacity());
 		}
-
-		font->renderTextCache(mTextCache.get());
 	}
 
 	GuiComponent::renderChildren(trans);
@@ -94,22 +92,4 @@ void TextComponent::calculateExtent()
 			mSize[1] = font->sizeWrappedText(mText, getSize().x()).y();
 		}
 	}
-}
-
-void TextComponent::onTextChanged()
-{
-	calculateExtent();
-
-	std::shared_ptr<Font> f = getFont();
-	mTextCache = std::unique_ptr<TextCache>(f->buildTextCache(f->wrapText(mText, mSize.x()), 0, 0, (mColor >> 8 << 8) | mOpacity));
-}
-
-void TextComponent::setValue(const std::string& value)
-{
-	setText(value);
-}
-
-std::string TextComponent::getValue() const
-{
-	return mText;
 }

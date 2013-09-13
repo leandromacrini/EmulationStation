@@ -20,7 +20,7 @@ namespace fs = boost::filesystem;
 std::string SystemData::getStartPath() { return mStartPath; }
 std::string SystemData::getExtension() { return mSearchExtension; }
 
-SystemData::SystemData(const std::string& name, const std::string& descName, const std::string& startPath, const std::string& extension, const std::string& command, const std::string& image, const std::string& logo, const std::string& relaseDate, const std::string& manufacturer)
+SystemData::SystemData(std::string& name, std::string& descName, std::string& startPath, std::string& extension, std::string& command, std::string& image, std::string& logo, std::string& relaseDate, std::string& manufacturer)
 {
 	mName = name;
 	mDescName = descName;
@@ -36,7 +36,7 @@ SystemData::SystemData(const std::string& name, const std::string& descName, con
 	{
 		mStartPath.erase(0, 1);
 		mStartPath.insert(0, getHomePath());
-	}
+        }
 
 	mSearchExtension = extension;
 	mLaunchCommand = command;
@@ -101,8 +101,8 @@ void SystemData::launchGame(Window* window, GameData* game)
 	window->normalizeNextUpdate();
 
 	//update number of times the game has been launched and the time
-	game->incTimesPlayed();
-	game->lastPlayedNow();
+	game->setTimesPlayed(game->getTimesPlayed() + 1);
+	game->setLastPlayed(std::time(nullptr));
 }
 
 void SystemData::populateFolder(FolderData* folder)
@@ -150,7 +150,7 @@ void SystemData::populateFolder(FolderData* folder)
 			//if it matches, add it
 			if(chkExt == extension)
 			{
-				GameData* newGame = new GameData(this, filePath.generic_string());
+				GameData* newGame = new GameData(this, filePath.generic_string(), filePath.stem().string());
 				folder->pushFileData(newGame);
 				isGame = true;
 				break;
@@ -191,12 +191,11 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 {
 	deleteSystems();
 
-	LOG(LogInfo) << "Loading system config file " << path << "...";
+	LOG(LogInfo) << "Loading system config file...";
 
 	if(!fs::exists(path))
 	{
-		LOG(LogError) << "File does not exist!";
-		
+		LOG(LogInfo) << "System config file \"" << path << "\" doesn't exist!";
 		if(writeExample)
 			writeExampleConfig(path);
 
@@ -207,17 +206,17 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 	pugi::xml_parse_result res = doc.load_file(path.c_str());
 
 	if(!res)
-	{
+				{
 		LOG(LogError) << "Could not parse config file!";
 		LOG(LogError) << res.description();
 		return false;
-	}
+				}
 
 	//actually read the file
 	pugi::xml_node systemList = doc.child("systemList");
 
 	for(pugi::xml_node system = systemList.child("system"); system; system = system.next_sibling("system"))
-	{
+				{
 		std::string name, descname, path, ext, cmd, image, logo, releasedate, manufacturer;
 		name = system.child("name").text().get();
 		descname = system.child("descname").text().get();
@@ -231,10 +230,10 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 
 		//validate
 		if(name.empty() || path.empty() || ext.empty() || cmd.empty())
-		{
+					{
 			LOG(LogError) << "System \"" << name << "\" is missing name, path, extension, or command!";
 			continue;
-		}
+					}
 
 		//convert path to generic directory seperators
 		boost::filesystem::path genericPath(path);
@@ -246,10 +245,10 @@ bool SystemData::loadConfig(const std::string& path, bool writeExample)
 		{
 			LOG(LogWarning) << "System \"" << name << "\" has no games! Ignoring it.";
 			delete newSys;
-		}else{
+			}else{
 			sSystemVector.push_back(newSys);
+			}
 		}
-	}
 
 	return true;
 }

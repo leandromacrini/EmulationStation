@@ -72,7 +72,7 @@ public:
 				stream << "Hat " << id << " " << getHatDir(value);
 				break;
 			case TYPE_KEY:
-				stream << "Key " << SDL_GetKeyName((SDL_Keycode)id);
+				stream << "Key " << SDL_GetKeyName((SDLKey)id);
 				break;
 			default:
 				stream << "Input to string error";
@@ -86,7 +86,7 @@ public:
 class InputConfig
 {
 public:
-	InputConfig(int deviceId, const std::string& deviceName);
+	InputConfig(int deviceId);
 
 	void clear();
 	void mapInput(const std::string& name, Input input);
@@ -109,7 +109,6 @@ public:
 private:
 	std::map<std::string, Input> mNameMap;
 	const int mDeviceId;
-	const std::string mDeviceName;
 	int mPlayerNum;
 };
 

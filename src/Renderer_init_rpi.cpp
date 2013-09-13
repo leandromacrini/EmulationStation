@@ -4,7 +4,9 @@
 #include <GLES/gl.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include <SDL.h>
+#include "Font.h"
+#include <SDL/SDL.h>
+#include "InputManager.h"
 #include "Log.h"
 
 #ifdef _RPI_
@@ -13,7 +15,7 @@
 
 namespace Renderer
 {
-	SDL_Window* sdlWindow;
+	SDL_Surface* sdlScreen;
 
 	EGLDisplay display;
 	EGLSurface surface;
@@ -42,18 +44,15 @@ namespace Renderer
 			return false;
 		}
 
-		sdlWindow = SDL_CreateWindow("EmulationStation", 
-			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			display_width, display_height,
-			0);
-
-		if(sdlWindow == NULL)
+		sdlScreen = SDL_SetVideoMode(1, 1, 0, SDL_SWSURFACE);
+		if(sdlScreen == NULL)
 		{
-			LOG(LogError) << "Error creating SDL window!" << SDL_GetError();
+			LOG(LogError) << "Error creating SDL window for input!";
 			return false;
 		}
 
-		LOG(LogInfo) << "SDL Window created, creating EGL context...";
+
+		LOG(LogInfo) << "Creating surface...";
 
 #ifdef _RPI_
 		DISPMANX_ELEMENT_HANDLE_T dispman_element;
@@ -199,8 +198,8 @@ namespace Renderer
 		surface = EGL_NO_SURFACE;
 		context = EGL_NO_CONTEXT;
 
-		SDL_DestroyWindow(sdlWindow);
-		sdlWindow = NULL;
+		SDL_FreeSurface(sdlScreen);
+		sdlScreen = NULL;
 		SDL_Quit();
 	}
 

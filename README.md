@@ -27,12 +27,12 @@ Building
 EmulationStation uses some C++11 code, which means you'll need to install at least g++-4.7 on Linux, or VS2010 on Windows. 
 For installing and switching to g++-4.7 see [here](http://lektiondestages.blogspot.de/2013/05/installing-and-switching-gccg-versions.html).  You can also just use `export CXX=g++-4.7` to explicitly specify the compiler for CMake (make sure you delete your CMake cache files if it's not working).
 
-EmulationStation has a few dependencies. For building, you'll need SDL2, Boost.System, Boost.Filesystem, FreeImage, FreeType, and Eigen3.  You'll also need the DejaVu TrueType font on Linux to run ES.
+EmulationStation has a few dependencies. For building, you'll need SDL 1.2, Boost.System, Boost.Filesystem, FreeImage, FreeType, and Eigen 3.  You'll also need the DejaVu TrueType font on Linux to run ES.
 
 **On Linux:**
 All of this be easily installed with apt-get:
 ```
-sudo apt-get install libsdl2-dev libboost-system-dev libboost-filesystem-dev libfreeimage-dev libfreetype6-dev libeigen3-dev ttf-dejavu libasound2-dev
+sudo apt-get install libsdl1.2-dev libboost-system-dev libboost-filesystem-dev libfreeimage-dev libfreetype6-dev libeigen3-dev ttf-dejavu
 ```
 
 On "desktop" Linux (that is, *not* the Raspberry Pi), you'll also need OpenGL.  Try installing the MESA development package with:
@@ -54,19 +54,19 @@ make
 
 [Boost](http://www.boost.org/users/download/) (you'll need to compile for Boost.Filesystem)
 
-[Eigen3](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+[Eigen 3](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 [FreeImage](http://downloads.sourceforge.net/freeimage/FreeImage3154Win32.zip)
 
 [FreeType2](http://download.savannah.gnu.org/releases/freetype/freetype-2.4.9.tar.bz2) (you'll need to compile)
 
-[SDL2](http://www.libsdl.org/release/SDL2-devel-2.0.0-VC.zip)
+[SDL-1.2](http://www.libsdl.org/release/SDL-devel-1.2.15-VC.zip)
 
-(remember to copy necessary .DLLs into the same folder as the executable: FreeImage.dll, freetype6.dll, SDL2.dll, and zlib1.dll)
+(remember to copy necessary .DLLs into the same folder as the executable: FreeImage.dll, freetype6.dll, SDL.dll, and zlib1.dll)
 
 [CMake](http://www.cmake.org/cmake/resources/software.html) (this is used for generating the Visual Studio project)
 
-(If you don't know how to use CMake, here are some hints: run cmake-gui and point it at your EmulationStation folder.  Point the "build" directory somewhere - I use EmulationStation/build.  Click configure, choose "Visual Studio [year] Project", fill in red fields as they appear, then click Generate.)
+(If you don't know how to use CMake, here are some hints: run cmake-gui and point it at your EmulationStation folder.  Point the "build" directory somewhere - I use EmulationStation/build.  Click configure, choose "Visual Studio 2010 Project", fill in red fields as they appear, then click Generate.)
 
 
 Configuring
@@ -110,49 +110,27 @@ You can use `--help` to view a list of command-line options. Briefly outlined he
 
 Writing an es_systems.cfg
 =========================
-The file `~/.emulationstation/es_systems.cfg` contains the system configuration data for EmulationStation, written in XML.
+The file `~/.emulationstation/es_systems.cfg` contains the system configuration data for EmulationStation. A system is a NAME, DESCNAME, PATH, EXTENSION, and COMMAND. You can define any number of systems, just use every required variable again. You can switch between systems by pressing left and right. They will cycle in the order they are defined.
 
-The order EmulationStation displays systems reflects the order you define them in.
+The NAME is what ES will use to internally identify the system. Theme.xml and gamelist.xml files will also be searched for in `~/.emulationstation/NAME/` if not found at the root of PATH. It is recommended that you abbreviate here if necessary, e.g. "nes".
 
-**NOTE:** A system *must* have at least one game present in its "path" directory, or ES will ignore it! If no systems are found, ES won't even start!
+The DESCNAME is a "pretty" name for the system - it show up in a header if one is displayed. It is optional; if not supplied, it will copy NAME (note: DESCNAME must also *not* be the last tag you define for a system! This is due to the nature of how optional tags are implemented.).
 
-Here's an example es_systems.cfg:
+The PATH is where ES will start the search for ROMs. All subdirectories (and links!) will be included.
 
-```
-<!-- This is the EmulationStation Systems configuration file.
-All systems must be contained within the <systemList> tag.-->
+**NOTE:** A system *must* have at least one game present in its PATH directory, or ES will ignore it.
 
-<systemList>
-	<!-- Here's an example system to get you started. -->
-	<system>
-		<!-- A short name, used internally. -->
-		<name>SNES</name>
+The EXTENSION is a list of extensions ES will consider valid and add to the list when searching. Each extension *must* start with a period. The list is delimited by a space.
 
-		<!-- A "pretty" name, displayed in the menus and such. This one is optional. -->
-		<fullname>Super Nintendo Entertainment System</fullname>
+The COMMAND is the shell command ES will execute to start your emulator. As it is evaluated by the shell (i.e. bash), you can do some clever tricks if need be.
 
-		<!-- The path to start searching for ROMs in. '~' will be expanded to $HOME or $HOMEPATH, depending on platform. 
-		All subdirectories (and non-recursive links) will be included. -->
-		<path>~/roms/snes</path>
-
-		<!-- A list of extensions to search for, delimited by a space. You MUST include the period! It's also case sensitive. -->
-		<extension>.smc .sfc .SMC .SFC</extension>
-
-		<!-- The shell command executed when a game is selected. A few special tags are replaced if found in a command, like %ROM%. -->
-		<command>snesemulator %ROM%</command>
-		<!-- This example would run the bash command "snesemulator /home/user/roms/snes/Super\ Mario\ World.sfc". -->
-	</system>
-</systemList>
-```
-
-The following "tags" are replaced by ES in launch commands:
+The following "tags" are replaced by ES in COMMANDs:
 
 `%ROM%`		- Replaced with absolute path to the selected ROM, with most Bash special characters escaped with a backslash.
 
 `%BASENAME%`	- Replaced with the "base" name of the path to the selected ROM. For example, a path of "/foo/bar.rom", this tag would be "bar". This tag is useful for setting up AdvanceMAME.
 
 `%ROM_RAW%`	- Replaced with the unescaped absolute path to the selected ROM.  If your emulator is picky about paths, you might want to use this instead of %ROM%, but enclosed in quotes.
-
 
 gamelist.xml
 ============

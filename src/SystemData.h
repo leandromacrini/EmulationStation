@@ -11,7 +11,7 @@ class GameData;
 class SystemData
 {
 public:
-	SystemData(const std::string& name, const std::string& descName, const std::string& startPath, const std::string& extension, const std::string& command, const std::string& image, const std::string& logo, const std::string& relaseDate, const std::string& manufacturer);
+	SystemData(std::string& name, std::string& descName, std::string& startPath, std::string& extension, std::string& command, std::string& image, std::string& logo, std::string& relaseDate, std::string& manufacturer);
 	~SystemData();
 
 	FolderData* getRootFolder();

@@ -12,8 +12,6 @@ public:
 	GuiComponent(Window* window);
 	virtual ~GuiComponent();
 
-	virtual void textInput(const char* text);
-
 	//Called when input is received.
 	//Return true if the input is consumed, false if it should continue to be passed to other children.
 	virtual bool input(InputConfig* config, Input input);
@@ -21,10 +19,10 @@ public:
 	//Called when time passes.  Default implementation also calls update(deltaTime) on children - so you should probably call GuiComponent::update(deltaTime) at some point.
 	virtual void update(int deltaTime);
 
-	//Called when it's time to render.  By default, just calls renderChildren(parentTrans * getTransform()).
+	//Called when it's time to render.  By default, just calls renderChildren(transform).
 	//You probably want to override this like so:
 	//1. Calculate the new transform that your control will draw at with Eigen::Affine3f t = parentTrans * getTransform().
-	//2. Set the renderer to use that new transform as the model matrix - Renderer::setMatrix(t);
+	//2. Set the renderer to use that new transform as the model matrix - Renderer::setModelMatrix(t.data());
 	//3. Draw your component.
 	//4. Tell your children to render, based on your component's transform - renderChildren(t).
 	virtual void render(const Eigen::Affine3f& parentTrans);
@@ -52,12 +50,6 @@ public:
 	void setOpacity(unsigned char opacity);
 
 	const Eigen::Affine3f getTransform();
-
-	virtual std::string getValue() const;
-	virtual void setValue(const std::string& value);
-
-	virtual void onFocusGained() {};
-	virtual void onFocusLost() {};
 
 protected:
 	void renderChildren(const Eigen::Affine3f& transform) const;

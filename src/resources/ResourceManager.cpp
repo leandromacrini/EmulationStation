@@ -72,7 +72,7 @@ void ResourceManager::unloadAll()
 			iter->lock()->unload(*this);
 			iter++;
 		}else{
-			iter = mReloadables.erase(iter);
+			mReloadables.erase(iter++);
 		}
 	}
 }
@@ -87,7 +87,7 @@ void ResourceManager::reloadAll()
 			iter->lock()->reload(*this);
 			iter++;
 		}else{
-			iter = mReloadables.erase(iter);
+			mReloadables.erase(iter++);
 		}
 	}
 }

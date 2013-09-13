@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
 	//make sure it wasn't empty
 	if(SystemData::sSystemVector.size() == 0)
 	{
-		LOG(LogError) << "No systems found! Does at least one system have a game present? (check that extensions match!)\n(Also, make sure you've updated your es_systems.cfg for XML!)";
+		LOG(LogError) << "No systems found! Does at least one system have a game present? (check that extensions match!)";
 		return 1;
 	}
 
@@ -196,15 +196,15 @@ int main(int argc, char* argv[])
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
 				case SDL_JOYAXISMOTION:
-				case SDL_TEXTINPUT:
-				case SDL_TEXTEDITING:
-				case SDL_JOYDEVICEADDED:
-				case SDL_JOYDEVICEREMOVED:
 					if(window.getInputManager()->parseEvent(event))
 					{
 						sleeping = false;
 						timeSinceLastEvent = 0;
 					}
+					break;
+				case SDL_USEREVENT:
+					//try to poll input devices, but do not necessarily wake up...
+					window.getInputManager()->parseEvent(event);
 					break;
 				case SDL_QUIT:
 					running = false;
@@ -246,7 +246,7 @@ int main(int argc, char* argv[])
 		Log::flush();
 	}
 
-	window.deinit();
+	Renderer::deinit();
 	SystemData::deleteSystems();
 
 	std::cout << "EmulationStation cleanly shutting down...\n";

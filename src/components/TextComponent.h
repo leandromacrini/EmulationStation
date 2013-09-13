@@ -18,21 +18,15 @@ public:
 
 	void render(const Eigen::Affine3f& parentTrans) override;
 
-	std::string getValue() const override;
-	void setValue(const std::string& value) override;
-	
 private:
 	std::shared_ptr<Font> getFont() const;
 	
 	void calculateExtent();
 
-	void onTextChanged();
-
 	unsigned int mColor;
 	std::shared_ptr<Font> mFont;
 	Eigen::Matrix<bool, 1, 2> mAutoCalcExtent;
 	std::string mText;
-	std::unique_ptr<TextCache> mTextCache;
 	bool mCentered;
 };
 

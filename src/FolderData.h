@@ -39,8 +39,6 @@ public:
 	std::vector<FileData*> getFiles(bool onlyFiles = false) const;
 	std::vector<FileData*> getFilesRecursive(bool onlyFiles = false) const;
 
-	void removeFileRecursive(FileData* file);
-
 	void pushFileData(FileData* file);
 
 	void sort(ComparisonFunction & comparisonFunction = compareFileName, bool ascending = true);
