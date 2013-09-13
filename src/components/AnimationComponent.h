@@ -3,7 +3,12 @@
 
 #include "../GuiComponent.h"
 #include <vector>
-#include <functional>
+
+#ifndef WIN32
+	#include <tr1/functional>
+#else
+	#include <functional>
+#endif
 
 //just fyi, this is easily the worst animation system i've ever written.
 //it was mostly written during a single lecture and it really shows in how un-thought-out it is
