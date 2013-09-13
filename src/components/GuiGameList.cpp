@@ -373,8 +373,8 @@ void GuiGameList::updateDetailData()
 			Eigen::Vector3f imgOffset = Eigen::Vector3f(Renderer::getScreenWidth() * 0.10f, 0, 0);
 			mScreenshot.setPosition(getImagePos() - imgOffset);
 
-			mImageAnimation.fadeIn(35);
-			mImageAnimation.move(imgOffset.x(), imgOffset.y(), 20);
+			mImageAnimation.fadeIn(500);
+			mImageAnimation.move(imgOffset.x(), imgOffset.y(), 500);
 
 			mDescContainer.setPosition(Eigen::Vector3f(Renderer::getScreenWidth() * 0.03f, getImagePos().y() + mScreenshot.getSize().y() + 12, 0));
 			mDescContainer.setSize(Eigen::Vector2f(Renderer::getScreenWidth() * (mTheme->getFloat("listOffsetX") - 0.03f), Renderer::getScreenHeight() - mDescContainer.getPosition().y()));
@@ -395,7 +395,7 @@ void GuiGameList::clearDetailData()
 {
 	if(isDetailed())
 	{
-		mImageAnimation.fadeOut(35);
+		mImageAnimation.fadeOut(500);
 		mDescription.setText("");
 	}
 }
@@ -432,7 +432,7 @@ void GuiGameList::doTransition(int dir)
 	//move the entire thing offscreen so we'll move into place
 	setPosition((float)Renderer::getScreenWidth() * -dir, mPosition[1]);
 
-	mTransitionAnimation.move(Renderer::getScreenWidth() * dir, 0, 50);
+	mTransitionAnimation.move(Renderer::getScreenWidth() * dir, 0, 500);
 }
 
 void GuiGameList::doVerticalTransition(int dir)
