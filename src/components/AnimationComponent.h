@@ -18,7 +18,7 @@ class AnimationComponent
 public:
 	AnimationComponent();
 
-	void move(int x, int y, int speed, std::tr1::function<void()> callback = []() {});
+	void move(int x, int y, int time, std::tr1::function<void()> callback = []() {});
 	void fadeIn(int time, std::tr1::function<void()> callback = []() {});
 	void fadeOut(int time, std::tr1::function<void()> callback = []() {});
 
@@ -38,7 +38,7 @@ private:
 	void setChildrenOpacity(unsigned char opacity);
 
 	int mFadeRate;
-	int mMoveX, mMoveY, mMoveSpeed;
+	int mMoveX, mMoveY, mMovedX, mMovedY, mMoveTime;
 
 	std::tr1::function<void()> mCallback;
 };

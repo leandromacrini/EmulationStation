@@ -4,20 +4,20 @@ AnimationComponent::AnimationComponent()
 {
 	mMoveX = 0;
 	mMoveY = 0;
-	mMoveSpeed = 0;
+	mMoveTime = 0;
 	mFadeRate = 0;
 	mOpacity = 0;
 }
 
 
 
-void AnimationComponent::move(int x, int y, int speed, std::tr1::function<void()> callback)
+void AnimationComponent::move(int x, int y, int time, std::tr1::function<void()> callback)
 {
 	mCallback = callback;
 
 	mMoveX = x;
 	mMoveY = y;
-	mMoveSpeed = speed;
+	mMoveTime = time;
 }
 
 void AnimationComponent::fadeIn(int time, std::tr1::function<void()> callback)
@@ -43,13 +43,15 @@ void AnimationComponent::fadeOut(int time, std::tr1::function<void()> callback)
 //this should really be fixed at the system loop level...
 void AnimationComponent::update(int deltaTime)
 {
+	deltaTime /= 10;
+
 	if(mMoveX != 0 || mMoveY != 0)
 	{
 		//avoid division by zero and make a instant animation
-		if(mMoveSpeed == 0) mMoveSpeed = 1;
+		if(mMoveTime == 0) mMoveTime = 1;
 
-		int deltaX = mMoveX * deltaTime / mMoveSpeed;
-		int deltaY = mMoveY * deltaTime / mMoveSpeed;
+		int deltaX = mMoveX * deltaTime / mMoveTime;
+		int deltaY = mMoveY * deltaTime / mMoveTime;
 
 		//if is last time we enter complete animation and erase data
 		if( abs(deltaX) > abs(mMoveX) || abs(deltaY) > abs(mMoveY) )
@@ -57,17 +59,17 @@ void AnimationComponent::update(int deltaTime)
 			deltaX = mMoveX;
 			deltaY = mMoveY;
 
-			mMoveSpeed = 0;
+			mMoveTime = 0;
 		}
 		else
 		{
 			mMoveX -= deltaX;
 			mMoveY -= deltaY;
 
-			mMoveSpeed -= deltaTime;
+			mMoveTime -= deltaTime;
 		}
 
-		if(mMoveSpeed == 0 ){
+		if(mMoveTime == 0 ){
 			if(mCallback != nullptr) mCallback();
 
 			reset();
@@ -134,7 +136,7 @@ void AnimationComponent::reset()
 
 	mMoveX = 0;
 	mMoveY = 0;
-	mMoveSpeed = 0;
+	mMoveTime = 0;
 
 	mFadeRate = 0;
 }
