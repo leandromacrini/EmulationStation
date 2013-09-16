@@ -4,6 +4,8 @@ AnimationComponent::AnimationComponent()
 {
 	mMoveX = 0;
 	mMoveY = 0;
+	mMovedX = 0;
+	mMovedY = 0;
 	mMoveTime = 0;
 	mFadeRate = 0;
 	mOpacity = 0;
@@ -43,60 +45,55 @@ void AnimationComponent::fadeOut(int time, std::tr1::function<void()> callback)
 //this should really be fixed at the system loop level...
 void AnimationComponent::update(int deltaTime)
 {
-	deltaTime /= 10;
-
-	if(mMoveX != 0 || mMoveY != 0)
+	//Moving
+	if(mMoveTime)
 	{
-		//avoid division by zero and make a instant animation
-		if(mMoveTime == 0) mMoveTime = 1;
-
 		int deltaX = mMoveX * deltaTime / mMoveTime;
 		int deltaY = mMoveY * deltaTime / mMoveTime;
 
-		//if is last time we enter complete animation and erase data
-		if( abs(deltaX) > abs(mMoveX) || abs(deltaY) > abs(mMoveY) )
-		{
-			deltaX = mMoveX;
-			deltaY = mMoveY;
+		bool end = false;
 
-			mMoveTime = 0;
-		}
-		else
+		//last time?
+		if( abs(deltaX) > abs(mMoveX - mMovedX) ||  abs(deltaY) > abs(mMoveY - mMovedY) )
 		{
-			mMoveX -= deltaX;
-			mMoveY -= deltaY;
+			deltaX = mMoveX - mMovedX;
+			deltaY = mMoveY - mMovedY;
 
-			mMoveTime -= deltaTime;
+			end = true;
 		}
 
-		if(mMoveTime == 0 ){
+		mMovedX += deltaX;
+		mMovedY += deltaY;
+			
+		moveChildren(deltaX, deltaY);
+
+		if(end)
+		{
 			if(mCallback != nullptr) mCallback();
 
 			reset();
 		}
-
-		moveChildren(deltaX, deltaY);
-		}
+	}
 
 		if(mFadeRate != 0)
-		{
+	{
 		int deltaOpacity = 0;
-		
+
 		if(mFadeRate < 0)
 		{
 			deltaOpacity = mOpacity * deltaTime / mFadeRate;
 			mFadeRate += deltaTime;
 		}
 		else
-		{
+			{
 			deltaOpacity = (255 - mOpacity) * deltaTime / mFadeRate;
 			mFadeRate -= deltaTime;
-		}
+			}
 
 		int opacity = (int)mOpacity + deltaOpacity;
 
 			if(opacity > 255)
-			{
+		{
 				mFadeRate = 0;
 				opacity = 255;
 
@@ -104,24 +101,24 @@ void AnimationComponent::update(int deltaTime)
 			if(mCallback != NULL) mCallback();
 			
 			reset();
-			}
+		}
 
 			if(opacity < 0)
-			{
+		{
 				mFadeRate = 0;
 				opacity = 0;
 
 			//if we have a callback, call it
 			if(mCallback != NULL) mCallback();
-			
+
 			reset();
 
-			}
+		}	
 
 			mOpacity = (unsigned char)opacity;
 			setChildrenOpacity((unsigned char)opacity);
-		}
 	}
+}
 
 bool AnimationComponent::isAnimating()
 {
@@ -136,6 +133,8 @@ void AnimationComponent::reset()
 
 	mMoveX = 0;
 	mMoveY = 0;
+	mMovedX = 0;
+	mMovedY = 0;
 	mMoveTime = 0;
 
 	mFadeRate = 0;

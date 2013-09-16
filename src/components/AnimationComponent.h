@@ -38,6 +38,7 @@ private:
 	void setChildrenOpacity(unsigned char opacity);
 
 	int mFadeRate;
+	int mFaded, mFadeTime;
 	int mMoveX, mMoveY, mMovedX, mMovedY, mMoveTime;
 
 	std::tr1::function<void()> mCallback;
