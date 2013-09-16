@@ -235,8 +235,8 @@ void GuiConsoleList::setText(bool animate)
 {
 	//update text
 	textAnimator->reset();
-	tName->setText( "Name: " + SystemData::sSystemVector.at(mCurrentIndex)->getDescName());
-	tManufacturer->setText( "Manufacturer: " + SystemData::sSystemVector.at(mCurrentIndex)->getManufacturer());
+	tName->setText( "Name: " + SystemData::sSystemVector.at(mCurrentIndex)->getDescName() + " " + std::to_string( Renderer::getScreenWidth()));
+	tManufacturer->setText( "Manufacturer: " + SystemData::sSystemVector.at(mCurrentIndex)->getManufacturer()+ " " + std::to_string( Renderer::getScreenHeight()));
 	tDate->setText( "Release date: " + SystemData::sSystemVector.at(mCurrentIndex)->getRelaseDate());
 
 	int maxW = SDL_max( SDL_max(tName->getSize().x(), tManufacturer->getSize().x()), tDate->getSize().x());
@@ -276,10 +276,8 @@ void GuiConsoleList::setImages(bool animate)
 
 		if(i == mCurrentIndex)
 		{
-			img->setResize(0, (unsigned int)(Renderer::getScreenHeight()/2), true);
 			img->setOpacity(255);
 		} else {
-			img->setResize(0, (unsigned int)(Renderer::getScreenHeight()/5), true);
 			img->setOpacity(150);
 		}
 	}
